@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "jwtlogin", "jwtlogin.csproj", "{058D8C37-F253-471C-95AA-966BA2DD51BC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{058D8C37-F253-471C-95AA-966BA2DD51BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{058D8C37-F253-471C-95AA-966BA2DD51BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{058D8C37-F253-471C-95AA-966BA2DD51BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{058D8C37-F253-471C-95AA-966BA2DD51BC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {04B37543-60AA-4B8F-90BE-1D8E0B5FA9D5}
+	EndGlobalSection
+EndGlobal
