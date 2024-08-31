@@ -7,9 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-    new MySqlServerVersion(new Version(8, 4, 2)))); // Adjust version as necessary
+    options.UseNpgsql(connectionString));
 builder.Services.AddScoped<TokenService>(); // Register TokenService
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
