@@ -1,2 +1,26 @@
-# Ignore Visual Studio .vs folder
-.vs/
+# Node.js dependencies
+node_modules/
+
+# Build output
+/dist/
+/build/
+/public/assets/
+
+# Logs
+*.log
+
+# IDE configuration
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.local
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Compiled files
+/bin/
+/obj/
