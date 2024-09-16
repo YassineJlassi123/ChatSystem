@@ -24,3 +24,5 @@ Thumbs.db
 # Compiled files
 /bin/
 /obj/
+# Visual Studio
+.vs/

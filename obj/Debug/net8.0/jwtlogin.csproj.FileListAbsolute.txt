@@ -112,3 +112,9 @@ C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAn
 C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Npgsql.dll
 C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
 C:\Users\Yassine\source\repos\jwtlogin\obj\Debug\net8.0\jwtlogin.sourcelink.json
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.Google.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\System.Security.Permissions.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Newtonsoft.Json.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\System.Net.WebSockets.WebSocketProtocol.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\package-lock.json
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\package.json

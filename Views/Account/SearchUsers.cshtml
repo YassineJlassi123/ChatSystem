@@ -1,0 +1,73 @@
+﻿@model jwtlogin.Controllers.AccountController.SearchUsersViewModel
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Users</title>
+    <link rel="stylesheet" href="~/path/to/tailwind.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- For AJAX requests -->
+</head>
+<body class="bg-background">
+
+    <div class="container mx-auto p-4">
+        <form method="get" action="@Url.Action("SearchUsers")" class="mb-4">
+            <div class="flex items-center">
+                <input type="text"
+                       name="query"
+                       value="@Model.SearchTerm"
+                       placeholder="Search by username..."
+                       class="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring ring-primary" />
+                <button type="submit"
+                        class="ml-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark">
+                    Search
+                </button>
+            </div>
+        </form>
+
+        <div id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @if (Model.Users.Any())
+            {
+                foreach (var user in Model.Users)
+                {
+                    <div class="bg-card text-card-foreground p-4 border border-border rounded-lg shadow-md flex items-center justify-between">
+                        <span class="text-lg font-semibold">@user.Username</span>
+                        <button class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-dark"
+                                onclick="sendFriendRequest('@user.Username')">
+                            Add
+                        </button>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted-foreground">No users found.</p>
+            }
+        </div>
+    </div>
+
+    <script>
+        function sendFriendRequest(username) {
+            axios.post('/account/SendFriendRequest', JSON.stringify(username), {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    const data = response.data;
+                    if (data.success) {
+                        alert(data.message); // Success message
+                    } else {
+                        alert(data.message); // Error message
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert('Error sending friend request');
+                });
+        }
+    </script>
+
+</body>
+</html>

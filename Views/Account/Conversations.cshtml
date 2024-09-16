@@ -1,0 +1,341 @@
+﻿@model List<jwtlogin.Controllers.AccountController.ConversationViewModel>
+
+@{
+    ViewData["Title"] = "Conversations";
+}
+
+<div class="flex flex-col md:flex-row h-screen bg-background " style="height: 90vh;">
+    <!-- Sidebar: Conversation List for PC -->
+    <div class="w-full md:w-1/3 bg-card text-foreground p-4 rounded-lg shadow-md md:block hidden overflow-y-auto">
+        <!-- Search Form -->
+        <input type="text" id="searchInput2" name="searchTerm" placeholder="Rechercher dans Messenger" class="border border-border rounded-lg p-2 w-full" />
+        
+        <!-- Conversation List -->
+        @if (Model != null && Model.Any())
+        {
+            <div id="conversation-list-container">
+            @foreach (var conversation in Model)
+            {
+                    <div id="conversation-@conversation.Id" class="dark:text-primary-foreground flex items-center mt-4 cursor-pointer p-4 rounded-lg shadow-lg @((conversation.HasUnreadMessages ? "bg-zinc-300" : "")) " onclick="loadConversation(@conversation.Id)">
+                    <img src="@conversation.ImageProfile" alt="@conversation.FriendUsername" class="w-12 h-12 rounded-full mr-4" />
+                    <div class="flex-1">
+                        <p class="font-semibold">@conversation.FriendUsername</p>
+                        <p style="max-width: 200px;" class=" text-muted text-sm dark:text-muted-foreground truncate">
+                            @if (conversation.LastMessageContent != null)
+                            {
+                                @conversation.LastMessageContent
+                            }
+                            else
+                            {
+                            <p class="text-muted-foreground text-sm">Start conversation with your friend?</p>
+                            }
+                        </p>
+                    </div>
+                    @if (conversation.LastMessageContent != null)
+                    {
+                            <p class="text-muted-foreground text-sm" data-date="@conversation.LastMessageSentAt?.ToString("o")"></p> <!-- Adjust this based on your data -->
+                    }
+                </div>
+                
+            }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted-foreground mb-2">Historique des discussions manquant.</p>
+        }
+    </div>
+
+    <!-- Main Content: Conversation Details Container for both PC and Mobile -->
+    <div id="conversation-details" class="w-full md:w-2/3 bg-background text-foreground p-4 rounded-lg shadow-md">
+    </div>
+        <!-- Initially empty, will be populated by the partial view -->
+     
+    <!-- Mobile View Design -->
+    <div class="md:hidden">
+        <div class="p-4">
+            <!-- Search Form -->
+                <input type="text" id="searchInput3" name="searchTerm" placeholder="Rechercher dans Messenger" class="border border-border rounded-lg p-2 w-full" />
+
+
+            <!-- Conversation List -->
+            @if (Model != null && Model.Any())
+            {
+                    <div id="conversation-list-container3">
+
+                @foreach (var conversation in Model)
+                {
+                        <div id="conversation-mobile-@conversation.Id" class="p-4 rounded-lg shadow-lg mt-4 dark:bg-primary dark:text-primary-foreground cursor-pointer @((conversation.HasUnreadMessages ? "bg-zinc-300" : ""))" onclick="loadConversation(@conversation.Id)">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center">
+                                <img src="@conversation.ImageProfile" alt="Friend Avatar" class="w-12 h-12 rounded-full mr-4" />
+                                <div>
+                                    <h3 class="font-semibold">@conversation.FriendUsername</h3>
+                                    <p style="max-width: 200px;" class=" text-muted text-sm dark:text-muted-foreground truncate">
+                                        @if (conversation.LastMessageContent != null)
+                                        {
+                                            @conversation.LastMessageContent
+                                        }
+                                        else
+                                        {
+                                        <p class="text-muted text-sm dark:text-muted-foreground">Start conversation with your friend?</p>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            @if (conversation.LastMessageContent != null)
+                            {
+                                    <p class="text-muted text-sm dark:text-muted-foreground" data-date="@conversation.LastMessageSentAt?.ToString("o")"></p> <!-- Adjust this based on your data -->
+                            }
+                        </div>
+                    </div>
+                }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted text-sm dark:text-muted-foreground">Historique des discussions manquant.</p>
+            }
+        </div>
+    </div>
+
+
+@section Scripts {
+    <!-- Load external scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+    <script>
+        function initializeChatScripts() {
+            const conversationMessagesContainer = document.querySelector('#conversation-messages');
+
+            conversationMessagesContainer.scrollTop = conversationMessagesContainer.scrollHeight;
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/friendHub")
+                .build();
+
+            connection.on("ReceiveMessage", (message) => {
+                // Handle incoming message
+                addMessageToChat(message);
+            });
+
+            connection.start().catch(err => console.error(err.toString()));
+
+            document.getElementById("sendMessageButton").addEventListener("click", () => {
+                const content = document.getElementById("messageInput").value;
+                const recipientUsername = document.getElementById("recipientUsername").innerText; // Use the recipient username from the model
+                if (content != "") {
+                    fetch('/account/SendMessage', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            recipientUsername,
+                            content
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log(data.message);
+                                // Add the sent message to the chat window
+                                addMessageToChat({
+                                    content: content,
+                                    sentAt: new Date().toISOString(),
+                                    senderUsername: "@User.Identity.Name"
+                                });
+                                document.getElementById("messageInput").value = ""; // Clear the input field
+                            } else {
+                                console.error(data.message);
+                            }
+                        })
+                        .catch(err => console.error('Error sending message:', err));
+                }
+               
+            });
+
+            function addMessageToChat(message) {
+                const messageElement = document.createElement('div');
+                    const timeAgoString = timeAgo(message.sentAt);
+
+                messageElement.innerHTML = `
+                <div class="flex ${message.senderUsername === '@User.Identity.Name' ? 'justify-end' : 'justify-start'} mb-4">
+                    <div class="p-2 rounded-lg max-w-xs break-words inline-block ${message.senderUsername === '@User.Identity.Name' ? 'bg-blue-200 text-right' : 'bg-gray-200 text-left'
+                    }">
+                        <span>${message.content}</span>
+                                    <span class="text-muted-foreground block text-sm">${timeAgoString}</span>
+                    </div>
+                </div>
+            `;
+                
+
+                // Use the ID of the conversation messages container in the partial view
+                
+                if (conversationMessagesContainer) {
+                    conversationMessagesContainer.appendChild(messageElement);
+                    // Scroll to the bottom of the chat window
+                   
+
+                    conversationMessagesContainer.scrollTop = conversationMessagesContainer.scrollHeight;
+                }
+            }
+        }
+
+        function loadConversation(conversationId) {
+            const isMobile = window.matchMedia("(max-width: 1024px)").matches;
+
+                // Construct the element ID based on viewport size
+                const elementId = isMobile
+                    ? `conversation-mobile-${conversationId}`
+                    : `conversation-${conversationId}`;
+                fetch(`/account/MarkAllMessagesAsRead?conversationId=${conversationId}`, {
+                    method: 'POST'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to mark message as read.');
+                        }
+                        document.querySelectorAll('[data-date]').forEach(element => {
+                            const date = element.getAttribute('data-date');
+                            element.textContent = timeAgo(date);
+                        });
+                        const conversationElement = document.getElementById(elementId);
+                       
+                            conversationElement.classList.remove('bg-zinc-300');
+                    })
+                    .catch(error => {
+                        console.error('Error marking message as read:', error);
+                    });
+            if (isMobile) {
+                // Redirect to a new page for mobile view
+                window.location.href = `/account/ConversationDetail/${conversationId}`;
+            } else {
+                // Load conversation details inline for desktop view
+                fetch(`/account/ConversationDetail/${conversationId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest' // Ensure the header is set
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        const conversationDetails = document.getElementById('conversation-details');
+                        conversationDetails.innerHTML = html;
+
+                        // Initialize scripts for the newly loaded partial view
+                        initializeChatScripts();
+                    })
+                    .catch(error => console.error('Error loading conversation detail:', error));
+            }
+        }
+       
+        const searchInput2 = document.getElementById('searchInput2');
+        const conversationListContainer = document.getElementById('conversation-list-container');
+            const searchInput3 = document.getElementById('searchInput3');
+            const conversationListContainer3 = document.getElementById('conversation-list-container3');
+        let typingTimer2;
+        let typingTimer3;
+
+        searchInput2.addEventListener('input', () => {
+                clearTimeout(typingTimer2);
+                typingTimer2 = setTimeout(() => {
+                const query = searchInput2.value.trim();
+                if (query) {
+                        fetchSearchResults(query, conversationListContainer);
+                } else {
+                    conversationListContainer.innerHTML = ''; // Clear results if input is empty
+                }
+            }, typingInterval);
+        });
+            searchInput3.addEventListener('input', () => {
+                clearTimeout(typingTimer3);
+                typingTimer3 = setTimeout(() => {
+                    const query = searchInput3.value.trim();
+                    if (query) {
+                        fetchSearchResults(query, conversationListContainer3);
+                    } else {
+                        conversationListContainer3.innerHTML = ''; // Clear results if input is empty
+                    }
+                }, typingInterval);
+            });
+
+        // Fetch search results from the server
+        function fetchSearchResults(query,container) {
+            fetch(`/account/SearchConversations?searchTerm=${encodeURIComponent(query)}`)
+                .then(response => response.json()) // Convert response to JSON
+                .then(data => {
+                        renderSearchResults(data, container);
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                });
+        }
+
+        // Render search results
+            function renderSearchResults(results, container) {
+                container.innerHTML = ''; // Clear previous results
+
+            if (results.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">No results found.</p>';
+                return;
+            }
+
+                results.forEach(result => {
+                    // Create a new div for each result
+                    const resultElement = document.createElement('div');
+                    resultElement.classList.add('p-4', 'rounded-lg', 'shadow-lg', 'mt-4', 'dark:bg-primary', 'dark:text-primary-foreground', 'cursor-pointer');
+
+                    // Set the onclick event to call the loadConversation function
+                    resultElement.setAttribute('onclick', `loadConversation(${result.Id})`);
+                    const timeAgoString = timeAgo(result.LastMessageSentAt);
+                    // Create the inner HTML with the appropriate structure and styles
+                    resultElement.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <img src="${result.ImageProfile}" alt="${result.FriendUsername}" class="w-12 h-12 rounded-full mr-4" />
+                            <div>
+                                <h3 class="font-semibold">${result.FriendUsername}</h3>
+                                <p style="max-width: 200px;" class="text-muted text-sm dark:text-muted-foreground truncate">
+                                    ${result.LastMessageContent ? result.LastMessageContent : 'Start conversation with your friend?'}
+                                </p>
+                            </div>
+                        </div>
+                                    ${result.LastMessageContent ? `<p class="text-muted text-sm dark:text-muted-foreground">${timeAgoString}</p>` : ''}
+                    </div>
+                `;
+
+                    // Append the newly created element to the container
+                    container.appendChild(resultElement);
+                });
+        }
+            function timeAgo(date) {
+                const now = new Date();
+                const seconds = Math.floor((now - new Date(date)) / 1000);
+
+                let interval = Math.floor(seconds / 31536000); // Years
+                if (interval >= 1) return interval + (interval === 1 ? " year ago" : " years ago");
+
+                interval = Math.floor(seconds / 2592000); // Months
+                if (interval >= 1) return interval + (interval === 1 ? " month ago" : " months ago");
+
+                interval = Math.floor(seconds / 86400); // Days
+                if (interval >= 1) return interval + (interval === 1 ? " day ago" : " days ago");
+
+                interval = Math.floor(seconds / 3600); // Hours
+                if (interval >= 1) return interval + (interval === 1 ? " hour ago" : " hours ago");
+
+                interval = Math.floor(seconds / 60); // Minutes
+                if (interval >= 1) return interval + (interval === 1 ? " minute ago" : " minutes ago");
+
+                return "Just now";
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-date]').forEach(element => {
+                    const date = element.getAttribute('data-date');
+                    element.textContent = timeAgo(date);
+                });
+            });
+
+    
+    </script>
+}

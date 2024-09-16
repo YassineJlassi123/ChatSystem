@@ -1,0 +1,127 @@
+﻿@model jwtlogin.Controllers.AccountController.ConversationDetailViewModel
+
+<div class="flex flex-col h-screen bg-background p-4" style="height:92vh">
+    <div class="flex items-center mb-4">
+        <img src="@Model.ImageProfileFr" alt="User Avatar" class="w-9 h-9 rounded-full" />
+        <div class="ml-3">
+            <span class="text-lg font-semibold">@Model.FriendUsername</span>
+        </div>
+        
+    </div>
+    <div id="conversation-messages" class="flex-1 overflow-y-auto p-4">
+        @foreach (var message in Model.Messages)
+        {
+            <div class="flex @(message.SenderUsername == User.Identity.Name ? "justify-end" : "justify-start") mb-4">
+                <div class="bg-purple-100 p-2 rounded-lg max-w-xs break-words inline-block @(message.SenderUsername == User.Identity.Name  ? "bg-blue-200 text-right" : "bg-gray-200 text-left")">
+                    <span>@message.Content</span>
+                    <span class="text-muted-foreground block text-sm" data-date="@message.SentAt.ToString("o")"></span>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="flex items-center mt-4">
+        <img src="https://placehold.co/40x40" alt="User Avatar" class="rounded-full mr-2" />
+        <textarea type="text" placeholder="Type a message..." id="messageInput" class="flex-1 border border-zinc-300 rounded-lg p-2" rows="2" ></textarea>
+        <button id="sendMessageButton" style="background-color:skyblue" class="text-secondary-foreground hover:bg-secondary/80 p-2 rounded-lg ml-2">Send</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        document.getElementById('conversation-messages').scrollTop = document.getElementById('conversation-messages').scrollHeight;
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/friendHub")
+            .build();
+
+        connection.on("ReceiveMessage", (message) => {
+            // Handle incoming message
+            addMessageToChat(message);
+        });
+
+        connection.start().catch(err => console.error(err.toString()));
+
+        document.getElementById("sendMessageButton").addEventListener("click", () => {
+            const content = document.getElementById("messageInput").value;
+            const conversationId = @Model.ConversationId;
+            const recipientUsername = "@Model.FriendUsername";
+            if (content != "") {
+                fetch('/account/SendMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        recipientUsername,
+                        content
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log(data.message);
+                            // Add the sent message to the chat window
+                            addMessageToChat({
+                                content: content,
+                                sentAt: new Date().toISOString(),
+                                senderUsername: "@User.Identity.Name"
+                            });
+                            document.getElementById("messageInput").value = ""; // Clear the input field
+                        } else {
+                            console.error(data.message);
+                        }
+                    })
+                    .catch(err => console.error('Error sending message:', err));
+
+            }
+            });
+
+
+        function addMessageToChat(message) {
+            const messageElement = document.createElement('div');
+            const timeAgoString = timeAgo(message.sentAt);
+
+            messageElement.innerHTML = `
+                        <div class="${message.senderUsername === '@User.Identity.Name' ? 'flex justify-end' : 'flex'} mb-4">
+                                    <div class="bg-purple-100 p-2 rounded-lg max-w-xs break-words inline-block ${message.senderUsername === '@User.Identity.Name' ? 'bg-blue-200 text-right' : 'bg-gray-200 text-left'
+                }">
+                                <span>${message.content}</span>
+                                        <span class="text-muted-foreground block text-sm">${timeAgoString}</span>
+                            </div>
+                        </div>
+                    `;
+            document.getElementById('conversation-messages').appendChild(messageElement);
+            // Scroll to the bottom of the chat window
+            document.getElementById('conversation-messages').scrollTop = document.getElementById('conversation-messages').scrollHeight;
+        }
+        function timeAgo(date) {
+            const now = new Date();
+            const seconds = Math.floor((now - new Date(date)) / 1000);
+
+            let interval = Math.floor(seconds / 31536000); // Years
+            if (interval >= 1) return interval + (interval === 1 ? " year ago" : " years ago");
+
+            interval = Math.floor(seconds / 2592000); // Months
+            if (interval >= 1) return interval + (interval === 1 ? " month ago" : " months ago");
+
+            interval = Math.floor(seconds / 86400); // Days
+            if (interval >= 1) return interval + (interval === 1 ? " day ago" : " days ago");
+
+            interval = Math.floor(seconds / 3600); // Hours
+            if (interval >= 1) return interval + (interval === 1 ? " hour ago" : " hours ago");
+
+            interval = Math.floor(seconds / 60); // Minutes
+            if (interval >= 1) return interval + (interval === 1 ? " minute ago" : " minutes ago");
+
+            return "Just now";
+        }
+        function updateTimeAgo() {
+            document.querySelectorAll('[data-date]').forEach(element => {
+                const date = element.getAttribute('data-date');
+                element.textContent = timeAgo(date);
+            });
+        }
+        updateTimeAgo();
+    </script>
+}

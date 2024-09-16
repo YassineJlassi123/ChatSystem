@@ -1,0 +1,32 @@
+﻿@model jwtlogin.Controllers.AccountController.ConversationDetailViewModel
+
+@{
+    Layout = null; // Prevent the layout from being included
+}
+<div class="flex flex-col h-full p-4">
+    <div class="flex items-center mb-4">
+        <img src="@Model.ImageProfileFr" alt="User Avatar" class="w-9 h-9 rounded-full" />
+        <div class="ml-3">
+            <span class="text-lg font-semibold">@Model.FriendUsername</span>
+        </div>
+    </div>
+    <div id="conversation-messages" class="flex-1 overflow-y-auto p-4">
+        @foreach (var message in Model.Messages)
+        {
+            
+            <div class="flex @(message.SenderUsername == User.Identity.Name ? "justify-end" : "justify-start") mb-4">
+                <div class="p-2 rounded-lg max-w-xs break-words inline-block @(message.SenderUsername == User.Identity.Name ? "bg-blue-200 text-right" : "bg-gray-200 text-left")">
+                    <span>@message.Content</span>
+                    <span class="text-muted-foreground block text-sm" data-date="@message.SentAt.ToString("o")"></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="flex items-center mt-auto">
+        <img src="https://placehold.co/40x40" alt="User Avatar" class="rounded-full mr-2" />
+        <textarea placeholder="Type a message..." id="messageInput" class="flex-1 border border-zinc-300 rounded-lg p-2 overflow-auto max-w-full" rows="2"  /></textarea>
+        <button id="sendMessageButton" style="background-color:skyblue" class="text-secondary-foreground hover:bg-secondary/80 p-2 rounded-lg ml-2">Send</button>
+    </div>
+</div>
+ 

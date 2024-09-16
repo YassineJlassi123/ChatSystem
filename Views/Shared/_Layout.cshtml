@@ -1,49 +1,833 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"] - jwtlogin</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/jwtlogin.styles.css" asp-append-version="true" />
+    <!-- Include Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <!-- Custom Tailwind Config (if needed) -->
+    <script>
+        window.tailwind.config = {
+            darkMode: ['class'],
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+                        secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+                        destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+                        muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+                        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+                        popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
+                        card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' }
+                    },
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">jwtlogin</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+<body class="text-foreground">
+
+    <!-- Main Header -->
+    <div class="bg-white shadow-md h-16 flex justify-between items-center p-4">
+        <div class="flex items-center space-x-4">
+            <button class="flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                <img src="/images/static/letter-y.png" alt="Search" class="w-6 h-6" />
+            </button>
+            @if (User.Identity.IsAuthenticated)
+            {
+                <!-- Search Button -->
+                <button id="searchButton" class="flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                    <img src="/images/static/search.png" alt="Search" class="w-4 h-4" />
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+
+                <!-- Search Container -->
+                <div id="searchContainer" style="width:25rem;top:54px;left: -10px;" class="hidden absolute mt-2 w-80 bg-white dark:bg-primary rounded-lg shadow-lg z-50">
+                    <div class="p-4">
+                        <input id="searchInput"
+                               type="text"
+                               placeholder="Search friends..."
+                               class="w-full p-2 border border-gray-300 rounded-md" />
+                        <div id="searchResults" class="mt-2">
+                            <!-- Search results will be dynamically added here -->
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+
+            }
+        </div>
+
+        <div class="flex items-center space-x-4">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <div class="relative">
+                    <button id="friendRequestIcon" class="relative flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                        <img src="/images/static/add-user.png" alt="Friend Requests" class="w-4 h-4" />
+                        <span id="unreadRequestCount" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">0</span>
+                    </button>
+
+                    <!-- Friend Requests Dropdown Container -->
+                    <div id="friendRequestDropdown" style="right:-180px;width:24rem" class="hidden absolute mt-2 w-80 bg-white dark:bg-primary rounded-lg shadow-lg max-h-96 overflow-auto z-50">
+                        <div id="friendRequests" class="p-4">
+                        </div>
+                        <div id="loadingIndicator" class="hidden p-4 text-center text-gray-500">
+                            Loading more friend requests...
+                        </div>
+                        <div id="noMoreRequests" class="hidden p-4 text-center text-gray-500">
+                            No more friend requests.
+                        </div>
+                    </div>
+                </div>
+
+                <a href="@Url.Action("conversations", "Account")" class="relative flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                    <img src="/images/static/message.png" alt="Messenger" class="w-4 h-4" />
+                    <!-- Add an id to the span so the count can be updated -->
+                    <span id="unreadMessageCount" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center" style="display: none;">
+                        <!-- Count will be updated here -->
+                    </span>
+                </a>
+                <div class="relative">
+                    <button id="notificationIcon" class="relative flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                        <img src="~/images/static/notification.png" alt="Notifications" class="w-4 h-4" />
+                        <span id="unreadCount" class="hidden absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">0</span>
+                    </button>
+
+                    <!-- Notification Dropdown Container -->
+                    <div id="notificationDropdown" style="right:-60px" class="hidden absolute  mt-2 w-96 bg-white dark:bg-primary rounded-lg shadow-lg max-h-96 overflow-auto z-50">
+                        <div id="notifications" class="p-4">
+                            <!-- Notifications will be dynamically inserted here -->
+                        </div>
+                        <div id="loadingIndicator" class="hidden p-4 text-center text-gray-500">
+                            Loading more notifications...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button id="profileIcon" class="relative flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
+                        <img id="userProfileImage" src="/images/static/placeholder.png" alt="Profile" class="w-8 h-8 rounded-full" />
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md py-2 z-50">
+                        <a href="#" id="viewProfileLink" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Profile</a>
+                        <form method="post" action="/account/logout">
+                            <button type="submit" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div>
+        <main role="main" class="container mx-auto ">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2024 - jwtlogin - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
+  
+
+    <!-- Include any required JS files -->
+    <script src="https://unpkg.com/unlazy@0.11.3/dist/unlazy.with-hashing.iife.js" defer init></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+    <script>
+
+        let pageNumber = 1;
+        let hasMoreNotifications = true;
+        let isLoading = false;
+
+        // Function to generate HTML for a notification
+        // Function to generate HTML for a notification
+        function generateNotificationHTML(notification) {
+            const timeAgoString = timeAgo(notification.CreatedAt);
+
+            // Add class for unread notifications
+            const notificationClass = notification.IsRead ? 'bg-background dark:bg-primary' : 'bg-zinc-300';
+
+            return `
+                        <div class="notification ${notificationClass} p-4 rounded-lg shadow-md mb-2 cursor-pointer" data-id="${notification.Id}">
+                    <div class="flex items-center">
+                        <img src="${notification.TriggeredByUser.ProfileImageUrl || 'https://placehold.co/50'}" alt="Profile Image" class="w-12 h-12 rounded-full mr-4">
+                        <div>
+                            <p class="text-primary-foreground font-semibold">${notification.TriggeredByUser.Username}</p>
+                            <p class="text-secondary-foreground text-sm">${notification.Message}</p>
+                            <p class="text-muted-foreground text-xs">${timeAgoString}</p>
+                        </div>
+                    </div>
+                        </div> `;
+        }
+
+
+        // Fetch notifications based on page number and whether to append results
+        async function fetchNotifications(page = 1, append = false) {
+            const notificationsContainer = document.getElementById('notifications');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            if (!append) {
+                notificationsContainer.innerHTML = ''; // Clear notifications if not appending
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            isLoading = true;
+
+            try {
+                const response = await fetch(`/account/GetNotifications?pageNumber=${page}&pageSize=10`);
+                const { Notifications, HasMore } = await response.json();
+
+                if (Notifications.length === 0) {
+                    hasMoreNotifications = false; // Stop fetching if no more notifications
+                }
+
+                Notifications.forEach(notification => {
+                    notificationsContainer.insertAdjacentHTML('beforeend', generateNotificationHTML(notification));
+                    const notificationElement = document.querySelector(`[data-id="${notification.Id}"]`);
+
+                    // Make the event listener function async
+                    notificationElement.addEventListener('click', async () => {
+                        if (notification.PostId) {
+                            await markNotificationAsRead(notification.Id);
+                            const postDetailsUrl = '@Url.Action("PostDetails", "Account")';
+                            window.location.href = `${postDetailsUrl}?postId=${notification.PostId}`;
+                        } else {
+                            await markNotificationAsRead(notification.Id);
+                            const profileUrl = '@Url.Action("Profile", "Account")';
+                            window.location.href = `${profileUrl}?username=${notification.TriggeredByUser.Username}`;
+                        }
+                    });
+                });
+
+                pageNumber++;
+                hasMoreNotifications = HasMore;
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                isLoading = false;
+            }
+        }
+
+        // Function to update the unread notification count
+        async function updateUnreadCount() {
+            try {
+                const response = await fetch('/account/GetUnreadNotificationCount');
+                const { unreadCount } = await response.json();
+                const unreadCountElement = document.getElementById('unreadCount');
+                unreadCountElement.textContent = unreadCount;
+                if (unreadCount > 0) {
+                    unreadCountElement.classList.remove('hidden');
+                }   
+            } catch (error) {
+                console.error('Error fetching unread notification count:', error);
+            }
+        }
+
+        // Mark all notifications as read
+        async function markNotificationAsRead(NotificationId) {
+            try {
+                const response = await fetch('/account/MarkNotificationsAsRead', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(NotificationId)
+                });
+
+                if (response.ok) {
+                    document.getElementById('unreadCount').textContent = parseInt(document.getElementById('unreadCount').textContent)-1;
+                    if (document.getElementById('unreadCount').textContent > 0) {
+                        document.getElementById('unreadCount').classList.remove('hidden');
+                    }
+
+                    // Reset unread count
+                } else {
+                    console.error('Error marking  notification as read.');
+                }
+            } catch (error) {
+                console.error('Error marking  notification as read:', error);
+            }
+        }
+        // Toggle dropdown and fetch initial notifications
+        document.getElementById('notificationIcon').addEventListener('click', async () => {
+            const notificationDropdown = document.getElementById('notificationDropdown');
+
+            if (notificationDropdown.classList.contains('hidden')) {
+                pageNumber = 1;
+                hasMoreNotifications = true;
+                // Show the dropdown and fetch notifications
+                notificationDropdown.classList.remove('hidden');
+                await fetchNotifications(pageNumber);
+             
+            } else {
+                // Hide the dropdown if it's visible
+                notificationDropdown.classList.add('hidden');
+            }
+        });
+
+        // Handle scroll to load more notifications
+        document.getElementById('notificationDropdown').addEventListener('scroll', async (e) => {
+            const { scrollTop, scrollHeight, clientHeight } = e.target;
+
+            if (scrollTop + clientHeight >= scrollHeight && !isLoading && hasMoreNotifications) {
+                await fetchNotifications(pageNumber, true);
+            }
+        });
+
+        // Initialize SignalR connection
+        window.connection = new signalR.HubConnectionBuilder()
+            .withUrl("/FriendHub")
+            .build();
+
+        window.connection.on("ReceiveNotification", (notification) => {
+         
+            
+            const notificationsContainer = document.getElementById('notifications');
+           
+            const unreadCount = document.getElementById('unreadCount');
+
+           
+
+            notificationsContainer.insertAdjacentHTML('afterbegin', generateNotificationHTML(notification));
+            const notificationElement = document.querySelector(`[data-id="${notification.Id}"]`);
+
+            // Increment the unread count
+            unreadCount.textContent = parseInt(unreadCount.textContent) + 1;
+            unreadCount.classList.remove('hidden');
+            console.log(notificationElement);
+            notificationElement.addEventListener('click', async () => {
+                if (notification.PostId) {
+                    await markNotificationAsRead(notification.Id);
+                    const postDetailsUrl = '@Url.Action("PostDetails", "Account")';
+                    window.location.href = `${postDetailsUrl}?postId=${notification.PostId}`;
+                } else {
+                    await markNotificationAsRead(notification.Id);
+                    const profileUrl = '@Url.Action("Profile", "Account")';
+                    window.location.href = `${profileUrl}?username=${notification.TriggeredByUser.Username}`;
+                }
+            });
+              
+        });
+
+        window.connection.start().catch(err => console.error('Error while starting SignalR connection:', err));
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            await updateUnreadCount(); // Fetch unread count on page load
+        });
+
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            try {
+                const response = await fetch('/account/GetUserProfileImage');
+                const data = await response.json();
+
+                if (data.imageUrl) {
+                    // Set the profile image to the user's profile picture
+                    document.getElementById('userProfileImage').src = data.imageUrl;
+                }
+            } catch (error) {
+                console.error('Error fetching profile image:', error);
+            }
+        });
+
+        // Toggle profile dropdown
+        document.getElementById('profileIcon').addEventListener('click', () => {
+            const profileDropdown = document.getElementById('profileDropdown');
+            profileDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (event) => {
+            const profileDropdown = document.getElementById('profileDropdown');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            const friendRequestDropdown = document.getElementById('friendRequestDropdown');
+
+            // Handle profile dropdown
+            if (!event.target.closest('#profileIcon') && !event.target.closest('#profileDropdown')) {
+                profileDropdown.classList.add('hidden');
+            }
+
+            // Handle notification dropdown
+            if (!event.target.closest('#notificationIcon') && !event.target.closest('#notificationDropdown')) {
+                notificationDropdown.classList.add('hidden');
+            }
+
+            // Handle friend request dropdown
+            if (!event.target.closest('#friendRequestIcon') && !event.target.closest('#friendRequestDropdown')) {
+                friendRequestDropdown.classList.add('hidden');
+            }
+        });
+
+
+       
+            let currentPage = 1;
+            let loading = false;
+            let allRequestsLoaded = false;
+
+            const friendRequestIcon = document.getElementById('friendRequestIcon');
+            const friendRequestDropdown = document.getElementById('friendRequestDropdown');
+            const friendRequestsContainer = document.getElementById('friendRequests');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const noMoreRequests = document.getElementById('noMoreRequests');
+
+            friendRequestIcon.addEventListener('click', () => {
+                friendRequestDropdown.classList.toggle('hidden');
+       
+            if (!loading && !allRequestsLoaded && friendRequestsContainer.innerHTML.trim() === '') {
+                    loadFriendRequests();
+                }
+            });
+
+            // Fetch friend requests
+            function loadFriendRequests() {
+                
+                loading = true;
+                loadingIndicator.classList.remove('hidden');
+
+            fetch(`/account/GetFriendRequests?page=${currentPage}&pageSize=7`)
+                    .then(response => response.json())
+                    .then(data => {
+                        renderFriendRequests(data.FriendRequests);
+
+                        if (!data.HasMoreRequests) {
+                            allRequestsLoaded = true;
+                            noMoreRequests.classList.remove('hidden');
+                        }
+
+                        if (data.FriendRequests.length > 0) {
+                            currentPage++;
+                        }
+
+                        loadingIndicator.classList.add('hidden');
+                        loading = false;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching friend requests:', error);
+                        loadingIndicator.classList.add('hidden');
+                        loading = false;
+                    });
+            }
+
+            // Render friend requests
+        function renderFriendRequests(requests) {
+            // Clear out any loading indicators or previous messages
+            const friendRequestsContainer = document.getElementById('friendRequests');
+
+            requests.forEach(request => {
+                const timeAgoString = timeAgo(request.RequestedAt);
+                const requestElement = document.createElement('div');
+                requestElement.classList.add('flex', 'items-center', 'justify-between', 'border-b', 'border-gray-200', 'py-2');
+                requestElement.id = `request-${request.Id}`; // Unique ID for each request
+
+                requestElement.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <img src="${request.ProfileImage ? request.ProfileImage : 'https://placehold.co/50x50'}" alt="${request.SenderUsername}" class="w-10 h-10 rounded-full" />
+                        <div>
+                            <p class="font-bold text-gray-800 dark:text-white">${request.SenderUsername}</p>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm">${timeAgoString}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="bg-green-500 text-white px-2 py-1 rounded-md accept-request-btn" data-request-id="${request.Id}">Accept</button>
+                        <button class="bg-red-500 text-white px-2 py-1 rounded-md decline-request-btn" data-request-id="${request.Id}">Decline</button>
+                    </div>
+                `;
+
+                // Append the dynamically created friend request to the container
+                friendRequestsContainer.appendChild(requestElement);
+            });
+
+            // Add event listeners for Accept and Decline buttons after requests are rendered
+            document.querySelectorAll('.accept-request-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const requestId = this.getAttribute('data-request-id');
+                    handleFriendRequest(requestId, true); // Accept the request
+                });
+            });
+
+            document.querySelectorAll('.decline-request-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const requestId = this.getAttribute('data-request-id');
+                   
+                    handleFriendRequest(requestId, false); // Decline the request
+                });
+            });
+        }
+        function handleFriendRequest(requestId, accept) {
+            const url = accept ? '/account/AcceptFriendRequest' : '/account/DeclineFriendRequest';
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestId )
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the friend request from the list on success
+                        document.getElementById(`request-${requestId}`).remove();
+                        unreadRequestCount--;
+                        updateUnreadRequestCountUI();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+
+
+
+            // Infinite scroll for loading more friend requests
+            friendRequestDropdown.addEventListener('scroll', () => {
+                if (friendRequestDropdown.scrollTop + friendRequestDropdown.clientHeight >= friendRequestDropdown.scrollHeight && !loading && !allRequestsLoaded) {
+                    loadFriendRequests();
+                }
+            });
+        function timeAgo(date) {
+            const now = new Date();
+            const seconds = Math.floor((now - new Date(date)) / 1000);
+
+            let interval = Math.floor(seconds / 31536000); // Years
+            if (interval >= 1) return interval + (interval === 1 ? " year ago" : " years ago");
+
+            interval = Math.floor(seconds / 2592000); // Months
+            if (interval >= 1) return interval + (interval === 1 ? " month ago" : " months ago");
+
+            interval = Math.floor(seconds / 86400); // Days
+            if (interval >= 1) return interval + (interval === 1 ? " day ago" : " days ago");
+
+            interval = Math.floor(seconds / 3600); // Hours
+            if (interval >= 1) return interval + (interval === 1 ? " hour ago" : " hours ago");
+
+            interval = Math.floor(seconds / 60); // Minutes
+            if (interval >= 1) return interval + (interval === 1 ? " minute ago" : " minutes ago");
+
+            return "Just now";
+        }
+        let unreadRequestCount = 0;
+
+        connection.on("ReceiveFriendRequest", (data) => {
+            console.log("Friend request received:", data);
+
+            // Create a single friend request object
+            const newRequest = [{
+                Id: data.Id, // Assuming the data has 'id', 'senderUsername', 'requestedAt', 'profileImage'
+                SenderUsername: data.SenderUsername,
+                RequestedAt: data.RequestedAt,
+                ProfileImage: data.ProfileImage
+            }];
+
+            // Append the new request to the UI
+            renderFriendRequests(newRequest);
+            unreadRequestCount++;
+
+            const countElement = document.getElementById('unreadRequestCount');
+            countElement.textContent = unreadRequestCount;
+
+            if (unreadRequestCount > 0) {
+                countElement.style.display = 'flex'; // Show the badge if count is greater than zero
+            } else {
+                countElement.style.display = 'none'; // Optionally hide the badge if count is zero
+            }
+        });
+
+
+        const searchButton = document.getElementById('searchButton');
+        const searchContainer = document.getElementById('searchContainer');
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        let typingTimer;
+        const typingInterval = 300; // Delay in ms before sending the request
+
+        // Toggle search container visibility
+        searchButton.addEventListener('click', () => {
+            searchContainer.classList.toggle('hidden');
+        });
+
+        // Handle input event
+        searchInput.addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+                const query = searchInput.value.trim();
+                if (query) {
+                    fetchSearchResults(query);
+                } else {
+                    searchResults.innerHTML = ''; // Clear results if input is empty
+                }
+            }, typingInterval);
+        });
+
+        // Fetch search results from the server
+        function fetchSearchResults(query) {
+            fetch(`/account/SearchFriends?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderSearchResults(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                });
+        }
+
+        // Render search results
+        function renderSearchResults(results) {
+            searchResults.innerHTML = ''; // Clear previous results
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<p class="text-gray-500">No results found.</p>';
+                return;
+            }
+
+            results.forEach(result => {
+                const resultElement = document.createElement('div');
+                resultElement.classList.add('flex', 'items-center', 'justify-between', 'border-b', 'border-gray-200', 'py-2');
+                resultElement.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <img src="${result.ProfileImage ? result.ProfileImage : 'https://placehold.co/50x50'}" alt="${result.Username}" class="w-10 h-10 rounded-full" />
+                        <div>
+                            <p class="font-bold text-gray-800 dark:text-white">${result.Username}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        ${result.IsFriend ?
+                        `<button class="bg-blue-500 text-white px-2 py-1 rounded-md send-message-btn" data-user-id="${result.Id}">Send Message</button>` :
+                        result.SentRequestId ?
+                            `<button class="bg-red-500 text-white px-2 py-1 rounded-md cancel-request-btn" data-request-id="${result.SentRequestId}">Cancel Request</button>` :
+                            result.ReceivedRequestId ?
+                                `<button class="bg-green-500 text-white px-2 py-1 rounded-md accept-request-btn" data-request-id="${result.ReceivedRequestId}">Accept</button>
+                                     <button class="bg-red-500 text-white px-2 py-1 rounded-md decline-request-btn" data-request-id="${result.ReceivedRequestId}">Decline</button>` :
+                                `<button class="bg-blue-500 text-white px-2 py-1 rounded-md add-friend-btn" data-user-id="${result.Username}">Add Friend</button>`
+                    }
+                        <button class="bg-gray-500 text-white px-2 py-1 rounded-md view-profile-btn" data-user-id="${result.Username}">View Profile</button>
+                    </div>
+                `;
+                searchResults.appendChild(resultElement);
+            });
+        
+
+        
+
+            // Add event listeners for "Add Friend" and "View Profile" buttons
+            document.querySelectorAll('.add-friend-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const username = event.target.getAttribute('data-user-id');
+                    handleAddFriend(event, username);  // Pass the event to handleAddFriend
+                });
+            });
+
+            document.querySelectorAll('.view-profile-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const username = this.getAttribute('data-user-id');  // Get the user's username from the data attribute
+                    if (username) {
+                        const profileUr = '@Url.Action("Profile", "Account")';
+                        window.location.href = `${profileUr}?username=${encodeURIComponent(username)}`;
+                        // Redirect to the friend's profile page (adjust the URL path if needed)
+                    }
+                });
+            });
+
+            // Add event listeners for "Cancel Request" buttons
+            document.querySelectorAll('.cancel-request-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const requestId = event.target.getAttribute('data-request-id');
+                    
+                    handleCancelRequest(event, requestId);
+                });
+            });
+
+            document.querySelectorAll('.accept-request-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const requestId = event.target.getAttribute('data-request-id');
+                    handleAcceptRequest(event, requestId); // Accept the request
+                });
+            });
+
+            document.querySelectorAll('.decline-request-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const requestId = event.target.getAttribute('data-request-id');
+                    handleDeclineRequest(event, requestId); // Decline the request
+                });
+            });
+        }
+
+        // Handle add friend action
+        function handleAddFriend(event,username) {
+            fetch('/account/SendFriendRequest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(username)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Friend request sent successfully!");
+                        // Update the button to "Cancel Request"
+                        event.target.innerText = "Cancel Request";
+                        event.target.classList.remove('add-friend-btn');
+                        event.target.classList.add('cancel-request-btn');
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("An error occurred while sending the friend request.");
+                });
+        }
+        function handleCancelRequest(event, requestId) {
+            fetch(`/account/DeleteFriendRequest?requestId=${requestId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Friend request canceled successfully!");
+                        // Optionally, remove the request element or update the UI
+                        event.target.innerText = "Add Friend";
+                        event.target.classList.remove('cancel-request-btn');
+                        event.target.classList.add('add-friend-btn');
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("An error occurred while canceling the friend request.");
+                });
+
+        }
+
+        function handleAcceptRequest(event, requestId) {
+            fetch('/account/AcceptFriendRequest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestId)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Friend request accepted!");
+                        // Update the button to "Send Message"
+                        event.target.innerText = "Send Message";
+                        event.target.classList.remove('accept-request-btn', 'bg-green-500');
+                        event.target.classList.remove('decline-request-btn', 'bg-red-500');
+
+                        event.target.classList.add('send-message-btn', 'bg-blue-500');
+                        unreadRequestCount--;
+                        updateUnreadRequestCountUI();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("An error occurred while accepting the friend request.");
+                });
+        }
+
+        // Handle decline request action
+        function handleDeclineRequest(event, requestId) {
+            fetch('/account/DeclineFriendRequest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestId )
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Friend request declined!");
+                        // Update the button to "Add Friend"
+                        event.target.innerText = "Add Friend";
+                        event.target.classList.remove('decline-request-btn', 'bg-red-500');
+                        event.target.classList.remove('accept-request-btn', 'bg-green-500');
+
+                        event.target.classList.add('add-friend-btn', 'bg-blue-500');
+                        unreadRequestCount--;
+                        updateUnreadRequestCountUI();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("An error occurred while declining the friend request.");
+                });
+        }
+        var username = '@User.Identity.Name';
+
+        // Encode the username
+        var encodedUsername = encodeURIComponent(username);
+        const profileU = '@Url.Action("Profile", "Account")';
+       
+        // Construct the URL
+        var profileLink = `${profileU}?username=${encodedUsername}`;
+
+        // Set the href attribute of the link
+        document.getElementById('viewProfileLink').setAttribute('href', profileLink);
+
+        function fetchUnreadRequestCount() {
+            return fetch('/account/GetUnreadRequestCount') // Adjust the URL to match your controller action
+                .then(response => response.json())
+                .then(data => data.Count); // Ensure this matches the structure of your response
+        }
+        function fetchUnreadMessagesCount() {
+            return fetch('/account/GetUnreadMessageCount') // Adjust the URL to match your controller action
+                .then(response => response.json())
+                .then(data => data.Count); // Ensure this matches the structure of your response
+        }
+
+        fetchUnreadRequestCount().then(Count => {
+            var countElement = document.getElementById('unreadRequestCount');
+            unreadRequestCount = Count;
+            countElement.textContent = Count;
+            if (Count === 0) {
+                countElement.style.display = 'none'; // Optionally hide the badge if count is zero
+            }
+        }).catch(error => {
+            console.error('Error fetching unread request count:', error);
+        });
+        fetchUnreadMessagesCount().then(Count => {
+            var countElement = document.getElementById('unreadMessageCount'); // Target the badge
+            if (Count > 0) {
+                countElement.textContent = Count;  // Update badge with the count
+                countElement.style.display = 'flex';  // Ensure badge is visible if there are unread messages
+            } else {
+                countElement.style.display = 'none'; // Hide the badge if count is zero
+            }
+        });
+
+        function updateUnreadRequestCountUI() {
+            const unreadRequestCountElement = document.getElementById('unreadRequestCount');
+            if (unreadRequestCountElement) {
+                unreadRequestCountElement.innerText = unreadRequestCount;
+
+            }
+            if (unreadRequestCount === 0) {
+                unreadRequestCountElement.style.display = 'none';
+            }
+        }
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
+
 </body>
 </html>

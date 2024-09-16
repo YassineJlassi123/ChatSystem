@@ -1,0 +1,99 @@
+﻿@{
+    ViewData["Title"] = "Register";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="path/to/tailwind.min.css" rel="stylesheet">
+    <title>@ViewData["Title"]</title>
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 w-full max-w-md">
+            <h2 class="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-6">Create an Account</h2>
+            <form id="registerForm" method="post" action="@Url.Action("Register", "Account")" class="space-y-4">
+                <div>
+                    <label for="Username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                    <input id="Username"
+                           name="Username"
+                           type="text"
+                           placeholder="Enter your username"
+                           class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                           required />
+                    <div class="text-red-500 mt-1" id="UsernameError"></div>
+                </div>
+                <div>
+                    <label for="Password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                    <input id="Password"
+                           name="Password"
+                           type="password"
+                           placeholder="Enter your password"
+                           class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                           required />
+                    <div class="text-red-500 mt-1" id="PasswordError"></div>
+                </div>
+                <div>
+                    <label for="ConfirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                    <input id="ConfirmPassword"
+                           name="ConfirmPassword"
+                           type="password"
+                           placeholder="Confirm your password"
+                           class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                           required />
+                    <div class="text-red-500 mt-1" id="ConfirmPasswordError"></div>
+                </div>
+                <button type="submit"
+                        class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-600">
+                    Register
+                </button>
+            </form>
+           
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').onsubmit = async function (event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const password = formData.get('Password');
+            const confirmPassword = formData.get('ConfirmPassword');
+
+            // Clear previous error messages
+            document.getElementById('UsernameError').innerText = '';
+            document.getElementById('PasswordError').innerText = '';
+            document.getElementById('ConfirmPasswordError').innerText = '';
+
+            if (password !== confirmPassword) {
+                document.getElementById('ConfirmPasswordError').innerText = 'Passwords do not match';
+                return;
+            }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams(formData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    window.location.href = '@Url.Action("Login", "Account")'; // Redirect to login page
+                } else {
+                    alert(result.message); // Show error message if registration fails
+                }
+            } catch (error) {
+                console.error('An error occurred:', error);
+                alert('An unexpected error occurred.');
+            }
+        };
+    </script>
+</body>
+</html>

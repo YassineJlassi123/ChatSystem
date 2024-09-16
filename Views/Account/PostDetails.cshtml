@@ -1,0 +1,298 @@
+﻿@model jwtlogin.Controllers.AccountController.PostDetailsViewModel
+
+<div id="post-container" class="max-w-lg mx-auto bg-card rounded-lg shadow-md p-4 mt-6">
+    <!-- Single post details -->
+    <div class="bg-card p-4 rounded-lg shadow-md mb-4" data-post-id="@Model.PostId">
+        <div class="flex items-center mb-4">
+            @if (!string.IsNullOrEmpty(Model.UserProfileImageUrl))
+            {
+                <img class="w-12 h-12 rounded-full" src="@Model.UserProfileImageUrl" alt="User Avatar" />
+            }
+            else
+            {
+                <img class="w-12 h-12 rounded-full" src="https://placehold.co/48x48" alt="User Avatar" />
+            }
+            <div class="ml-3">
+                <h2 class="text-lg font-semibold">@Model.Username</h2>
+                <p class="text-muted-foreground text-sm" data-date="@Model.CreatedAt.ToString("o")"></p>
+            </div>
+        </div>
+
+        <p id="post-content-@Model.PostId" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="@Model.Content">
+            @Model.Content
+        </p>
+        <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-post-@Model.PostId" onclick="togglePostContent(@Model.PostId)" style="display:none;">Show more</a>
+
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <img class="rounded-lg mb-4" src="@Model.ImageUrl" alt="Post Image" style="width:100%;" />
+        }
+
+        <div class="flex justify-between">
+            <div class="flex items-center">
+                <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="likePost(@Model.PostId)">
+                    ❤️
+                </button>
+                <span class="ml-2 text-muted-foreground" id="like-count-@Model.PostId">@Model.LikesCount</span>
+            </div>
+            <div class="flex items-center">
+                <button class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80">
+                    💬
+                </button>
+                <span class="ml-2 text-muted-foreground comment-count" id="comment-count-@Model.PostId">@Model.Comments.Count comments</span>
+            </div>
+        </div>
+
+        <!-- New Comment Input Design -->
+        <div class="mt-4">
+            <div class="relative mt-2">
+                <textarea id="comment-input-@Model.PostId" class="border border-border rounded-lg p-2 w-full pl-10 resize-none overflow-hidden" placeholder="Write a comment..." rows="1"></textarea>
+                <button class="absolute top-2 right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="addComment(@Model.PostId)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="comments-section mt-4">
+            <!-- Render each comment -->
+            @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+            {
+                <div class="flex items-center mt-4">
+                    <img class="w-10 h-10 rounded-full" src="@comment.UserProfileImageUrl" alt="User Avatar" />
+                    <div class="ml-3">
+                        <h3 class="text-sm font-semibold">@comment.Username</h3>
+                        <p class="text-muted-foreground text-xs" data-date="@comment.CreatedAt.ToString("o")"></p>
+                    </div>
+                </div>
+                <p id="comment-content-@comment.CommentId" class="text-muted-foreground mt-2 max-w-[400px] break-words whitespace-normal" data-full-comment="@comment.Content">
+                    @comment.Content
+                </p>
+                <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-@comment.CommentId" onclick="toggleComment(@comment.CommentId)" style="display:none;">Show more</a>
+            }
+        </div>
+    </div>
+</div>
+
+
+<script>
+    window.onload = function () {
+
+        const Posts = document.querySelectorAll("[id^='post-content-']");
+        Posts.forEach(post => {
+            const fullContent = post.getAttribute("data-full-content");
+
+            if (fullContent && fullContent.length > 300) {
+                const truncatedComment = fullContent.substring(0, 300) + "...";
+                post.textContent = truncatedComment;
+                const showMoreLink = document.getElementById("show-more-post-" + post.id.split('-').pop());
+                showMoreLink.style.display = 'inline'; // Show 'Show more' link
+            }
+        });
+
+        const comments = document.querySelectorAll("[id^='comment-content-']");
+        comments.forEach(comment => {
+            const fullComment = comment.getAttribute("data-full-comment");
+
+            if (fullComment && fullComment.length > 100) {
+                const truncatedComment = fullComment.substring(0, 100) + "...";
+                comment.textContent = truncatedComment;
+                const showMoreLink = document.getElementById("show-more-" + comment.id.split('-').pop());
+                showMoreLink.style.display = 'inline'; // Show 'Show more' link
+            }
+        });
+    };
+
+    function togglePostContent(postId) {
+        const postContentElement = document.getElementById(`post-content-${postId}`);
+        const fullContent = postContentElement.getAttribute('data-full-content');
+        const showMoreLink = document.getElementById(`show-more-post-${postId}`);
+
+
+        if (showMoreLink.textContent === "Show more") {
+            postContentElement.textContent = fullContent;
+            showMoreLink.textContent = "Show less";
+        } else {
+            postContentElement.textContent = fullContent.substring(0, 300) + "...";
+            showMoreLink.textContent = "Show more";
+        }
+
+
+    }
+    function toggleComment(commentId) {
+        const commentElement = document.getElementById(`comment-content-${commentId}`);
+        const fullComment = commentElement.getAttribute("data-full-comment");
+        const showMoreLink = document.getElementById(`show-more-${commentId}`);
+
+        if (showMoreLink.textContent === "Show more") {
+            commentElement.textContent = fullComment;
+            showMoreLink.textContent = "Show less";
+        } else {
+            commentElement.textContent = fullComment.substring(0, 100) + "...";
+            showMoreLink.textContent = "Show more";
+        }
+    }
+
+    async function addComment(postId) {
+        const content = document.getElementById(`comment-input-${postId}`).value.trim();
+        if (!content) {
+            alert('Comment cannot be empty');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/Account/AddComment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ postId, content })
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                alert(`Error: ${errorMessage}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            // Clear the comment input
+            document.getElementById(`comment-input-${postId}`).value = '';
+
+            // Update the comment count in the UI
+            const commentCountElement = document.querySelector(`[data-post-id="${postId}"] .comment-count`);
+            if (commentCountElement) {
+                commentCountElement.textContent = `${data.CommentCount} comments`;
+            }
+
+            // Optionally, add the new comment to the comments section
+            const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+            if (postElement) {
+                const commentsSection = postElement.querySelector('.comments-section');
+                if (commentsSection) {
+                    const newComment = document.createElement('div');
+                    newComment.classList.add('comment');
+
+                    // Check if the comment is long and needs truncation
+                    let truncatedContent = data.Content;
+                    let showMore = false;
+                    if (data.Content.length > 100) {
+                        truncatedContent = data.Content.substring(0, 100) + "...";
+                        showMore = true;
+                    }
+                    const timeAgoString = timeAgo(data.CreatedAt);
+
+                    newComment.innerHTML = `
+                                    <div class="flex items-center mt-4">
+                                        <img class="w-10 h-10 rounded-full" src="${data.ProfileImageUrl}" alt="User Avatar" />
+                                        <div class="ml-3">
+                                            <h3 class="text-sm font-semibold">${data.Username}</h3>
+                                                <p class="text-muted-foreground text-xs">${timeAgoString}</p>
+                                        </div>
+                                    </div>
+                                            <p id="comment-content-${data.commentId}" class="text-muted-foreground mt-2 max-w-[400px] break-words whitespace-normal" data-full-comment="${data.Content}">
+                                        ${truncatedContent}
+                                    </p>
+                                                        <a style=" display: none" href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${data.commentId}" onclick="toggleComment(${data.commentId})">Show more</a>
+                                `;
+
+                    if (commentsSection.firstChild) {
+                        commentsSection.insertBefore(newComment, commentsSection.firstChild);
+                    } else {
+                        commentsSection.appendChild(newComment);  // If there are no existing comments, just append it
+                    }
+
+                    if (showMore) {
+                        const showMoreLink = document.getElementById(`show-more-${data.commentId}`);
+                        showMoreLink.style.display = 'inline';
+                    }
+
+
+                }
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    async function likePost(postId) {
+        try {
+            const response = await fetch(`/Account/LikePost`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(postId)
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                alert(`Error: ${errorMessage}`);
+                return;
+            }
+
+            const data = await response.json();
+            // Update the like count in the UI
+            const likeCountElement = document.getElementById(`like-count-${postId}`);
+            if (likeCountElement) {
+                likeCountElement.textContent = data.JaimeCount;
+            }
+
+            // Optionally: Change the appearance of the like button to show whether it's liked or not
+            const likeButton = document.querySelector(`[onclick="likePost(${postId})"]`);
+            if (likeButton) {
+                if (likeButton.classList.contains('liked')) {
+                    // User unliked the post, so remove the 'liked' class
+                    likeButton.classList.remove('liked');
+                } else {
+                    // User liked the post, so add the 'liked' class
+                    likeButton.classList.add('liked');
+                }
+            }
+        } catch (error) {
+            console.error('Error liking/unliking the post:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const commentInputs = document.querySelectorAll("textarea[id^='comment-input-']");
+        commentInputs.forEach(textarea => {
+            textarea.addEventListener('input', function () {
+                this.style.height = 'auto'; // Reset height
+                this.style.height = `${this.scrollHeight}px`; // Set new height
+            });
+        });
+
+        // Initialize time ago
+        document.querySelectorAll("[data-date]").forEach(el => {
+            el.textContent = timeAgo(el.getAttribute('data-date'));
+        });
+    });
+
+    function timeAgo(date) {
+        const now = new Date();
+        const seconds = Math.floor((now - new Date(date)) / 1000);
+        const interval = Math.floor(seconds / 31536000);
+
+        if (interval > 1) return `${interval} years ago`;
+        if (interval === 1) return `1 year ago`;
+        const monthInterval = Math.floor(seconds / 2592000);
+        if (monthInterval > 1) return `${monthInterval} months ago`;
+        if (monthInterval === 1) return `1 month ago`;
+        const dayInterval = Math.floor(seconds / 86400);
+        if (dayInterval > 1) return `${dayInterval} days ago`;
+        if (dayInterval === 1) return `1 day ago`;
+        const hourInterval = Math.floor(seconds / 3600);
+        if (hourInterval > 1) return `${hourInterval} hours ago`;
+        if (hourInterval === 1) return `1 hour ago`;
+        const minuteInterval = Math.floor(seconds / 60);
+        if (minuteInterval > 1) return `${minuteInterval} minutes ago`;
+        if (minuteInterval === 1) return `1 minute ago`;
+        return `Just now`;
+    }
+</script>

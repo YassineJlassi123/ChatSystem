@@ -1,0 +1,98 @@
+﻿@model List<jwtlogin.Controllers.AccountController.FriendRequestViewModel>
+
+@{
+    ViewData["Title"] = "Friend Requests";
+}
+<div class="bg-gray-100 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 w-full max-w-md">
+        <h2 class="text-3xl font-extrabold text-black dark:text-gray-200 text-center mb-6">Friend Requests</h2>
+        <ul id="requestsTableBody" class="divide-y divide-gray-300 dark:divide-gray-700">
+            @if (Model != null && Model.Any())
+            {
+                @foreach (var request in Model)
+                {
+                    <li id="request-@request.Id" class="py-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-lg font-semibold text-black dark:text-gray-200">@request.SenderUsername</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Sent: @request.RequestedAt.ToString("MM/dd/yyyy")</p>
+                        </div>
+                        <div class="space-x-4">
+                            <!-- Accept Button -->
+                            <button class="bg-black text-white py-2 px-4 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring focus:ring-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800" onclick="handleFriendRequest(@request.Id, true)">
+                                Accept
+                            </button>
+                            <!-- Decline Button -->
+                            <button class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-500 focus:outline-none focus:ring focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-600" onclick="handleFriendRequest(@request.Id, false)">
+                                Decline
+                            </button>
+                        </div>
+                    </li>
+                }
+            }
+            else
+            {
+                <li class="py-4 text-center text-gray-600 dark:text-gray-400">
+                    No friend requests found.
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+        connection = new signalR.HubConnectionBuilder()
+        .withUrl("/FriendHub")
+        .build();
+
+    connection.on("ReceiveFriendRequest", (data) => {
+        console.log("Friend request received:", data);
+
+        // Create a new list item element
+        const newRequest = document.createElement("li");
+        newRequest.id = `request-${data.id}`;
+        newRequest.classList.add("py-4", "flex", "items-center", "justify-between");
+
+        // Add content to the list item
+        newRequest.innerHTML = `
+                        <div>
+                            <p class="text-lg font-semibold text-black dark:text-gray-200">${data.senderUsername}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Sent: ${new Date(data.requestedAt).toLocaleDateString()}</p>
+                        </div>
+                        <div class="space-x-4">
+                            <button class="bg-black text-white py-2 px-4 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring focus:ring-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800" onclick="handleFriendRequest(${data.id}, true)">
+                                Accept
+                            </button>
+                            <button class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-500 focus:outline-none focus:ring focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-600" onclick="handleFriendRequest(${data.id}, false)">
+                                Decline
+                            </button>
+                        </div>
+                    `;
+
+        // Add the new request to the list
+        const requestsTableBody = document.getElementById("requestsTableBody");
+        requestsTableBody.appendChild(newRequest);
+    });
+
+    function handleFriendRequest(requestId, accept) {
+        const url = accept ? '@Url.Action("AcceptFriendRequest", "Account")' : '@Url.Action("DeclineFriendRequest", "Account")';
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestId)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`request-${requestId}`).remove();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+</script>

@@ -1,0 +1,581 @@
+﻿@model jwtlogin.Controllers.AccountController.AccueilViewModel
+
+<div class="max-w-lg mx-auto bg-card rounded-lg shadow-md p-4 mt-6">
+    <h2 class="text-lg font-bold mb-2">Créer une publication</h2>
+    <form id="createPostForm" method="post" enctype="multipart/form-data">
+        <div class="flex items-center mb-4">
+            <img src="@Model.User.ProfileImageUrl" alt="User Avatar" class="w-12 h-12 rounded-full" />
+            <div class="ml-3">
+                <span class="text-lg font-semibold">@Model.User.Username</span>
+            </div>
+        </div>
+        <textarea name="Post.Content" class="w-full p-2 border border-border rounded-md focus:outline-none focus:ring focus:ring-ring"
+                  rows="3" placeholder="Que voulez-vous dire ?" required></textarea>
+        <span id="content-validation" class="text-red-500"></span>
+        <div class="flex items-center justify-between mt-4">
+            <label for="image-upload" class="flex items-center space-x-2 cursor-pointer">
+                <input type="file" id="image-upload" name="Post.Image" class="hidden" accept="image/*" onchange="previewImage()" />
+                <img  id="preview-image" src="/images/static/gallery.png" alt="Uploaded Image" class="cursor-pointer rounded-md h-32 w-full h-32 object-cover" />
+            </label>
+            <span id="image-validation" class="text-red-500"></span>
+        </div>
+        <button type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md">Publier</button>
+    </form>
+</div>
+
+
+<!-- Posts Section -->
+<div id="post-container" class="max-w-lg mx-auto bg-card rounded-lg shadow-md p-4 mt-6">
+    @if (Model.Posts != null && Model.Posts.Any())
+    {
+        @foreach (var post in Model.Posts.OrderByDescending(p => p.CreatedAt))
+        {
+            <div class="bg-card p-4 rounded-lg shadow-md mb-4" data-post-id="@post.Id">
+                <div class="flex items-center mb-4">
+                    @if (!string.IsNullOrEmpty(post.User.ProfileImageUrl))
+                    {
+                        <img class="w-12 h-12 rounded-full" src="@post.User.ProfileImageUrl" alt="User Avatar" />
+                    }
+                    else
+                    {
+                        <img class="w-12 h-12 rounded-full" src="https://placehold.co/48x48" alt="User Avatar" />
+                    }
+                    <div class="ml-3">
+                        <h2 class="text-lg font-semibold">@post.User.Username</h2>
+                        <p class="text-muted-foreground text-sm" data-date="@post.CreatedAt.ToString("o")"></p>
+                    </div>
+                </div>
+                <p id="post-content-@post.Id" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="@post.Content">
+                    @post.Content
+                </p>
+                <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-@post.Id" onclick="togglePostContent(@post.Id)" style="display:none;">Show more</a>
+                @if (!string.IsNullOrEmpty(post.ImageUrl))
+                {
+                    <img  style="width:100%" class="rounded-lg mb-4" src="@post.ImageUrl" alt="Post Image" />
+                }
+                <div class="flex justify-between">
+                    <div class="flex items-center">
+                        <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="likePost(@post.Id)">
+                            ❤️
+                        </button>
+                        <span class="ml-2 text-muted-foreground" id="like-count-@post.Id">@post.JaimeCount</span>
+                    </div>
+                    <div class="flex items-center">
+                        <a href="@Url.Action("PostDetails", "Account", new { postId = post.Id })" class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80">
+                            💬
+                        </a>
+                        <a href="@Url.Action("PostDetails", "Account", new { postId = post.Id })" class="ml-2 text-muted-foreground comment-count">
+                            @post.CommentCount comments
+                        </a>
+                    </div>
+                </div>
+
+                <!-- New Comment Input Design -->
+                <div class="mt-4">
+                    <div class="relative mt-2">
+
+                        <textarea id="comment-input-@post.Id" class="border border-border rounded-lg p-2 w-full pl-10 resize-none overflow-hidden" placeholder="Write a comment..." rows="1"></textarea>
+
+
+                        <button class="absolute top-2 right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="addComment(@post.Id)">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="comments-section mt-4">
+                </div>
+            </div>
+            }
+            }
+    else
+    {
+        <p>No posts to display.</p>
+    }
+</div>
+            <div id="loading-indicator" class="text-center py-4 hidden">
+                <p>Loading more posts...</p>
+            </div>
+    
+
+
+<script>
+
+
+    window.onload = function () {
+
+        const Posts = document.querySelectorAll("[id^='post-content-']");
+        Posts.forEach(post => {
+            const fullContent = post.getAttribute("data-full-content");
+
+            if (fullContent && fullContent.length > 300) {
+                const truncatedComment = fullContent.substring(0, 300) + "...";
+                post.textContent = truncatedComment;
+                const showMoreLink = document.getElementById("show-more-" + post.id.split('-').pop());
+                showMoreLink.style.display = 'inline'; // Show 'Show more' link
+            }
+        });
+
+        const comments = document.querySelectorAll("[id^='comment-content-']");
+        comments.forEach(comment => {
+            const fullComment = comment.getAttribute("data-full-comment");
+
+            if (fullComment && fullComment.length > 100) {
+                const truncatedComment = fullComment.substring(0, 100) + "...";
+                comment.textContent = truncatedComment;
+                const showMoreLink = document.getElementById("show-more-" + comment.id.split('-').pop());
+                showMoreLink.style.display = 'inline'; // Show 'Show more' link
+            }
+        });
+    };
+
+    function togglePostContent(postId) {
+        const postContentElement = document.getElementById(`post-content-${postId}`);
+        const fullContent = postContentElement.getAttribute('data-full-content');
+        const showMoreLink = document.getElementById(`show-more-${postId}`);
+
+
+        if (showMoreLink.textContent === "Show more") {
+            postContentElement.textContent = fullContent;
+            showMoreLink.textContent = "Show less";
+        } else {
+            postContentElement.textContent = fullContent.substring(0, 300) + "...";
+            showMoreLink.textContent = "Show more";
+        }
+
+
+    }
+
+
+    function toggleComment(commentId) {
+        const commentElement = document.getElementById(`comment-content-${commentId}`);
+        const fullComment = commentElement.getAttribute("data-full-comment");
+        const showMoreLink = document.getElementById(`show-more-${commentId}`);
+
+        if (showMoreLink.textContent === "Show more") {
+            commentElement.textContent = fullComment;
+            showMoreLink.textContent = "Show less";
+        } else {
+            commentElement.textContent = fullComment.substring(0, 100) + "...";
+            showMoreLink.textContent = "Show more";
+        }
+    }
+
+
+
+
+    async function addComment(postId) {
+        const content = document.getElementById(`comment-input-${postId}`).value.trim();
+        if (!content) {
+            alert('Comment cannot be empty');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/Account/AddComment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ postId, content })
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                alert(`Error: ${errorMessage}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            // Clear the comment input
+            document.getElementById(`comment-input-${postId}`).value = '';
+
+            // Update the comment count in the UI
+            const commentCountElement = document.querySelector(`[data-post-id="${postId}"] .comment-count`);
+            if (commentCountElement) {
+                commentCountElement.textContent = `${data.CommentCount} comments`;
+            }
+
+            // Optionally, add the new comment to the comments section
+            const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+            if (postElement) {
+                const commentsSection = postElement.querySelector('.comments-section');
+                if (commentsSection) {
+                    const newComment = document.createElement('div');
+                    newComment.classList.add('comment');
+
+                    // Check if the comment is long and needs truncation
+                    let truncatedContent = data.Content;
+                    let showMore = false;
+                    if (data.Content.length > 100) {
+                        truncatedContent = data.Content.substring(0, 100) + "...";
+                        showMore = true;
+                    }
+                    const timeAgoString = timeAgo(data.CreatedAt);
+
+                    newComment.innerHTML = `
+                                <div class="flex items-center mt-4">
+                                    <img class="w-10 h-10 rounded-full" src="${data.ProfileImageUrl}" alt="User Avatar" />
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-semibold">${data.Username}</h3>
+                                            <p class="text-muted-foreground text-xs">${timeAgoString}</p>
+                                    </div>
+                                </div>
+                                        <p id="comment-content-${data.commentId}" class="text-muted-foreground mt-2 max-w-[400px] break-words whitespace-normal" data-full-comment="${data.Content}">
+                                    ${truncatedContent}
+                                </p>
+                                                    <a style=" display: none" href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${data.commentId}" onclick="toggleComment(${data.commentId})">Show more</a>
+                            `;
+
+                    if (commentsSection.firstChild) {
+                        commentsSection.insertBefore(newComment, commentsSection.firstChild);
+                    } else {
+                        commentsSection.appendChild(newComment);  // If there are no existing comments, just append it
+                    }
+
+                    if (showMore) {
+                        const showMoreLink = document.getElementById(`show-more-${data.commentId}`);
+                        showMoreLink.style.display = 'inline';
+                    }
+                   
+
+                }
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    async function likePost(postId) {
+        try {
+            const response = await fetch(`/Account/LikePost`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(postId)
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                alert(`Error: ${errorMessage}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            // Update the like count in the UI
+            const likeCountElement = document.getElementById(`like-count-${postId}`);
+            if (likeCountElement) {
+                likeCountElement.textContent = data.JaimeCount;
+            }
+
+            // Optionally: Change the appearance of the like button to show whether it's liked or not
+            const likeButton = document.querySelector(`[onclick="likePost(${postId})"]`);
+            if (likeButton) {
+                if (likeButton.classList.contains('liked')) {
+                    // User unliked the post, so remove the 'liked' class
+                    likeButton.classList.remove('liked');
+                } else {
+                    // User liked the post, so add the 'liked' class
+                    likeButton.classList.add('liked');
+                }
+            }
+        } catch (error) {
+            console.error('Error liking/unliking the post:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        let pageNumber = @Model.PageNumber; // Initialize page number
+        const pageSize = @Model.PageSize; // Page size from model
+        let loading = false;
+        const totalPosts = @Model.TotalPosts; // Total posts from model
+        let postsLoaded = @Model.Posts.Count(); // Number of posts already loaded
+
+        async function loadPosts() {
+            if (loading || postsLoaded >= totalPosts) return;
+            loading = true;
+            document.getElementById('loading-indicator').classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/Account/LoadMorePosts?pageNumber=${pageNumber + 1}&pageSize=${pageSize}`);
+                const data = await response.json();
+                if ( data.posts.length > 0) {
+                    pageNumber++;
+                    postsLoaded += data.posts.length;
+                    appendPosts(data.posts);
+                }
+
+                if (postsLoaded >= totalPosts) {
+                    document.getElementById('loading-indicator').classList.add('hidden');
+                    window.removeEventListener('scroll', handleScroll); // Stop listening to scroll event
+                }
+            } catch (error) {
+                console.error('Error loading posts:', error);
+            } finally {
+                loading = false;
+                document.getElementById('loading-indicator').classList.add('hidden');
+            }
+        }
+       
+
+        function appendPosts(posts) {
+
+            const postContainer = document.getElementById('post-container');
+
+            posts.forEach(post => {
+                const timeAgoString = timeAgo(post.CreatedAt);
+
+                // Check if the post already exists in the DOM (to avoid duplicates)
+                if (!document.querySelector(`[data-post-id="${post.Id}]`)) {
+                    const postElement = document.createElement('div');
+                    postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
+                    postElement.setAttribute('data-post-id', post.Id);
+                    let truncatedContent = post.Content
+                    let showMore = false;
+                    if (post.Content.length > 300) {
+                        truncatedContent = post.Content.substring(0, 300) + "...";
+                        showMore = true;
+                    }
+                    postElement.innerHTML = `
+                    <div class="flex items-center mb-4">
+                        <img class="w-12 h-12 rounded-full" src="${post.User.ProfileImageUrl || 'https://placehold.co/48x48'}" alt="User Avatar" />
+                        <div class="ml-3">
+                            <h2 class="text-lg font-semibold">${post.User.Username}</h2>
+                                <p class="text-muted-foreground text-sm">${timeAgoString}</p>
+                        </div>
+                    </div>
+     <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
+                            ${truncatedContent}
+                                    </p>
+                                    <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
+                                    ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
+                    <div class="flex justify-between">
+                        <div class="flex items-center">
+                            <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="likePost(${post.Id})">
+                                ❤️
+                            </button>
+                            <span class="ml-2 text-muted-foreground" id="like-count-${post.Id}">${post.JaimeCount}</span>
+                        </div>
+                        <div class="flex items-center">
+                                <button class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80 comment-button" data-post-id="${post.Id}">
+                                        💬
+                                    </button>
+                                        <button>    <span class="ml-2 text-muted-foreground comment-count" id="comment-count-${post.Id}" data-post-id="${post.Id}">${post.Comments.length} comments</span>  </button>
+                        </div>
+                    </div>
+                      <div class="mt-4">
+        <div class="relative mt-2">
+
+                <textarea id="comment-input-${post.Id}" class="border border-border rounded-lg p-2 w-full pl-10 resize-none overflow-hidden" placeholder="Write a comment..." rows="1"></textarea>
+
+           
+            <button class="absolute top-2 right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="addComment(${post.Id})">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+            </button>
+        </div>
+        </div><div class="comments-section mt-4">
+                                        
+                                </div>
+                `;
+              
+                    postContainer.appendChild(postElement);
+                    if (showMore) {
+                        const showMoreLink = document.getElementById(`show-more-${post.Id}`);
+                        showMoreLink.style.display = 'inline';
+                    }
+                }
+            });
+               
+        }
+
+
+
+       
+
+        function handleScroll() {
+            const scrollPosition = window.innerHeight + window.pageYOffset;
+            const documentHeight = document.documentElement.offsetHeight;
+
+            if (scrollPosition >= documentHeight - 100 && !loading) { // Trigger load when near bottom
+                loadPosts();
+            }
+        }
+
+        window.addEventListener('scroll', handleScroll);
+
+        // Initial load of posts
+        
+    });
+    document.addEventListener("DOMContentLoaded", function () {
+        const commentInputs = document.querySelectorAll("textarea[id^='comment-content-']");
+
+        commentInputs.forEach((input) => {
+            input.addEventListener("input", function () {
+                // Reset height to allow shrinkage if the content is reduced
+                this.style.height = "auto";
+                // Adjust the height based on content (scrollHeight gives the required height)
+                this.style.height = `${this.scrollHeight}px`;
+            });
+        });
+    });
+
+    document.getElementById('submitPost').addEventListener('click', async () => {
+        const form = document.getElementById('createPostForm');
+        const formData = new FormData(form);
+
+        // Validate content and image
+        const content = formData.get('Post.Content').trim();
+        const imageFile = formData.get('Post.Image');
+        if (!content) {
+            document.getElementById('content-validation').innerText = 'Content is required.';
+            return;
+        }
+        if (!imageFile.type.startsWith('image/')) {
+            document.getElementById('image-validation').innerText = 'Only image files are allowed.';
+            return;
+        }
+
+        document.getElementById('content-validation').innerText = '';
+        document.getElementById('image-validation').innerText = '';
+
+        try {
+            const response = await fetch('/account/CreatePost', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                form.reset(); // Clear form
+                document.getElementById('preview-image').src = '/images/static/gallery.png'; // Clear preview image
+                appendnewPosts(result.post); // Add the new post to the top of the list
+            } else {
+                console.error('Error creating post:', result.error);
+            }
+        } catch (error) {
+            console.error('Error creating post:', error);
+        }
+    });
+
+    function previewImage() {
+        const fileInput = document.getElementById('image-upload');
+        const previewImage = document.getElementById('preview-image');
+
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                previewImage.src = e.target.result;
+            }
+
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            previewImage.src = 'https://placehold.co/400x200'; // Default image
+        }
+    }
+    function appendnewPosts(post) {
+        const timeAgoString = timeAgo(post.CreatedAt);
+
+        const postContainer = document.getElementById('post-container');
+        // Check if the post already exists in the DOM (to avoid duplicates)
+        if (!document.querySelector(`[data-post-id="${post.Id}]`)) {
+            const postElement = document.createElement('div');
+            postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
+            postElement.setAttribute('data-post-id', post.Id);
+            let truncatedContent = post.Content
+            let showMore = false;
+            if (post.Content.length > 300) {
+                truncatedContent = post.Content.substring(0, 300) + "...";
+                showMore = true;
+            }
+            postElement.innerHTML = `
+                                        <div class="flex items-center mb-4">
+                                            <img class="w-12 h-12 rounded-full" src="@Model.User.ProfileImageUrl" alt="User Avatar" />
+                                            <div class="ml-3">
+                                                <h2 class="text-lg font-semibold">@Model.User.Username</h2>
+                                                    <p class="text-muted-foreground text-sm">${timeAgoString}</p>
+                                            </div>
+                                        </div>
+                                             <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
+                                ${truncatedContent}
+                                        </p>
+                                        <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
+                                        ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
+                                        <div class="flex justify-between">
+                                            <div class="flex items-center">
+                                                <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="likePost(${post.Id})">
+                                                    ❤️
+                                                </button>
+                                                <span class="ml-2 text-muted-foreground" id="like-count-${post.Id}">${post.JaimeCount}</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                     <button class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80 comment-button" data-post-id="${post.Id}">
+                                        💬
+                                    </button>
+                                        <button>    <span class="ml-2 text-muted-foreground comment-count" id="comment-count-${post.Id}" data-post-id="${post.Id}">0 comments</span>  </button>
+                                            </div>
+                                        </div>
+                                          <div class="mt-4">
+                            <div class="relative mt-2">
+
+                                    <textarea id="comment-input-${post.Id}" class="border border-border rounded-lg p-2 w-full pl-10 resize-none overflow-hidden" placeholder="Write a comment..." rows="1"></textarea>
+
+
+                                <button class="absolute top-2 right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="addComment(${post.Id})">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    </svg>
+                                </button>
+                            </div>
+                                 <div class="comments-section mt-4">
+                                                </div>
+                        </div>
+                                    `;
+
+            postContainer.insertBefore(postElement, postContainer.firstChild);
+            if (showMore) {
+                const showMoreLink = document.getElementById(`show-more-${post.Id}`);
+                showMoreLink.style.display = 'inline';
+            }
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        function timeAgo(date) {
+            const now = new Date();
+            const seconds = Math.floor((now - new Date(date)) / 1000);
+
+            let interval = Math.floor(seconds / 31536000); // Years
+            if (interval >= 1) return interval + (interval === 1 ? " year ago" : " years ago");
+
+            interval = Math.floor(seconds / 2592000); // Months
+            if (interval >= 1) return interval + (interval === 1 ? " month ago" : " months ago");
+
+            interval = Math.floor(seconds / 86400); // Days
+            if (interval >= 1) return interval + (interval === 1 ? " day ago" : " days ago");
+
+            interval = Math.floor(seconds / 3600); // Hours
+            if (interval >= 1) return interval + (interval === 1 ? " hour ago" : " hours ago");
+
+            interval = Math.floor(seconds / 60); // Minutes
+            if (interval >= 1) return interval + (interval === 1 ? " minute ago" : " minutes ago");
+
+            return "Just now";
+        }
+        function updateTimeAgo() {
+            document.querySelectorAll('[data-date]').forEach(element => {
+                const date = element.getAttribute('data-date');
+                element.textContent = timeAgo(date);
+            });
+        }
+
+        // Initialize time ago for existing posts/comments
+        updateTimeAgo();
+    });
+</script>

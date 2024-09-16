@@ -9,8 +9,68 @@
       "PackagePath": "staticwebassets\\css\\site.css"
     },
     {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\css\\tailwind.min.css",
+      "PackagePath": "staticwebassets\\css\\tailwind.min.css"
+    },
+    {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\favicon.ico",
       "PackagePath": "staticwebassets\\favicon.ico"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\covers\\fb96ee76-2021-4f70-b6e9-a2c680a22e76.jfif",
+      "PackagePath": "staticwebassets\\images\\covers\\fb96ee76-2021-4f70-b6e9-a2c680a22e76.jfif"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\profiles\\22232227-e183-4349-a4b6-909ff3500143.jpg",
+      "PackagePath": "staticwebassets\\images\\profiles\\22232227-e183-4349-a4b6-909ff3500143.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\profiles\\2fff7806-ed66-4e0a-bb19-38fd51b65e5e.jpg",
+      "PackagePath": "staticwebassets\\images\\profiles\\2fff7806-ed66-4e0a-bb19-38fd51b65e5e.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\add-user.png",
+      "PackagePath": "staticwebassets\\images\\static\\add-user.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\addImage.png",
+      "PackagePath": "staticwebassets\\images\\static\\addImage.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\camera.png",
+      "PackagePath": "staticwebassets\\images\\static\\camera.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\cover.png",
+      "PackagePath": "staticwebassets\\images\\static\\cover.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\gallery.png",
+      "PackagePath": "staticwebassets\\images\\static\\gallery.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\letter-y.png",
+      "PackagePath": "staticwebassets\\images\\static\\letter-y.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\message.png",
+      "PackagePath": "staticwebassets\\images\\static\\message.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\notification.png",
+      "PackagePath": "staticwebassets\\images\\static\\notification.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\placeholder.png",
+      "PackagePath": "staticwebassets\\images\\static\\placeholder.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\profile.png",
+      "PackagePath": "staticwebassets\\images\\static\\profile.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\search.png",
+      "PackagePath": "staticwebassets\\images\\static\\search.png"
     },
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\js\\site.js",
@@ -243,6 +303,14 @@
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\lib\\jquery\\dist\\jquery.min.map",
       "PackagePath": "staticwebassets\\lib\\jquery\\dist\\jquery.min.map"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\uploads\\0fe1f1a2-292f-4c8c-ba3d-e4d0056a0511.jfif",
+      "PackagePath": "staticwebassets\\uploads\\0fe1f1a2-292f-4c8c-ba3d-e4d0056a0511.jfif"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\uploads\\4fc7f204-8591-474c-9fa2-4c48c7a55bea.jpg",
+      "PackagePath": "staticwebassets\\uploads\\4fc7f204-8591-474c-9fa2-4c48c7a55bea.jpg"
     },
     {
       "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.jwtlogin.props",
