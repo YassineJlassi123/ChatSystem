@@ -23,6 +23,12 @@ var jwtKey = Environment.GetEnvironmentVariable("JwtKey") ?? throw new InvalidOp
 var googleClientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? throw new InvalidOperationException("Google Client ID not configured.");
 var googleClientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? throw new InvalidOperationException("Google Client Secret not configured.");
 
+// Ensure JWT key is long enough
+if (jwtKey.Length < 16)
+{
+    throw new InvalidOperationException("JWT Key must be at least 16 characters long.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -34,7 +40,6 @@ builder.Services.AddSignalR().AddJsonProtocol(options =>
 });
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -67,7 +72,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtKey)) // Use the key from env
     };
 })
 .AddGoogle(options =>
