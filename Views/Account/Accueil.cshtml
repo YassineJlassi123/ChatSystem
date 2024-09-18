@@ -34,7 +34,9 @@
                 <div class="flex items-center mb-4">
                     @if (!string.IsNullOrEmpty(post.User.ProfileImageUrl))
                     {
-                        <img class="w-12 h-12 rounded-full" src="@post.User.ProfileImageUrl" alt="User Avatar" />
+                        <a href="javascript:void(0);" class="view-profile-link" data-username="@post.User.Username">
+                            <img class="w-12 h-12 rounded-full cursor-pointer" src="@post.User.ProfileImageUrl" alt="User Avatar" />
+                        </a>
                     }
                     else
                     {
@@ -116,7 +118,15 @@
                 showMoreLink.style.display = 'inline'; // Show 'Show more' link
             }
         });
-
+        document.querySelectorAll('.view-profile-link').forEach(link => {
+            link.addEventListener('click', function () {
+                const username = this.getAttribute('data-username');  // Get the user's username from the data attribute
+                if (username) {
+                    const profileUrl = '@Url.Action("Profile", "Account")';  // Razor generates the URL for the profile action
+                    window.location.href = `${profileUrl}?username=${encodeURIComponent(username)}`;
+                }
+            });
+        });
         const comments = document.querySelectorAll("[id^='comment-content-']");
         comments.forEach(comment => {
             const fullComment = comment.getAttribute("data-full-comment");
@@ -335,9 +345,10 @@
                     const postElement = document.createElement('div');
                     postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
                     postElement.setAttribute('data-post-id', post.Id);
-                    let truncatedContent = post.Content
                     let showMore = false;
-                    if (post.Content.length > 300) {
+                    let truncatedContent = post.Content || '';
+
+                    if (truncatedContent.length > 300) {
                         truncatedContent = post.Content.substring(0, 300) + "...";
                         showMore = true;
                     }
@@ -349,9 +360,8 @@
                                 <p class="text-muted-foreground text-sm">${timeAgoString}</p>
                         </div>
                     </div>
-     <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
-                            ${truncatedContent}
-                                    </p>
+         ${post.Content ? ` <p  id = "post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data - full - content="${post.Content}" >
+                                    ${truncatedContent} </p>` : ''}
                                     <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
                                     ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
                     <div class="flex justify-between">
@@ -430,26 +440,35 @@
         const form = document.getElementById('createPostForm');
         const formData = new FormData(form);
 
-        // Validate content and image
+        // Get the image file input and file
+        const imageFileInput = document.getElementById('image-upload');
+        const imageFile = imageFileInput.files[0];
+        const imageValidation = document.getElementById('image-validation');
+
+        // Clear previous validation messages
+        document.getElementById('content-validation').innerText = '';
+        imageValidation.innerText = '';
+
         const content = formData.get('Post.Content').trim();
-        const imageFile = formData.get('Post.Image');
-        if (!content) {
-            document.getElementById('content-validation').innerText = 'Content is required.';
-            return;
-        }
-        if (!imageFile.type.startsWith('image/')) {
-            document.getElementById('image-validation').innerText = 'Only image files are allowed.';
+
+        // Validate content and image
+        if (!content && !imageFile) {
+            document.getElementById('content-validation').innerText = 'Please provide either content or an image.';
             return;
         }
 
-        document.getElementById('content-validation').innerText = '';
-        document.getElementById('image-validation').innerText = '';
+        // Optionally validate image type if an image is provided
+        if (imageFile && imageFile.type && !imageFile.type.startsWith('image/')) {
+            imageValidation.innerText = 'Only image files are allowed.';
+            return;
+        }
 
         try {
             const response = await fetch('/account/CreatePost', {
                 method: 'POST',
                 body: formData
             });
+
             const result = await response.json();
 
             if (result.success) {
@@ -457,27 +476,28 @@
                 document.getElementById('preview-image').src = '/images/static/gallery.png'; // Clear preview image
                 appendnewPosts(result.post); // Add the new post to the top of the list
             } else {
-                console.error('Error creating post:', result.error);
+                console.error('Error creating post:', result.message); // Display backend error message
+                document.getElementById('content-validation').innerText = result.message;
             }
         } catch (error) {
             console.error('Error creating post:', error);
+            document.getElementById('content-validation').innerText = 'An error occurred while creating the post. Please try again.';
         }
     });
 
+    // Preview selected image
     function previewImage() {
-        const fileInput = document.getElementById('image-upload');
-        const previewImage = document.getElementById('preview-image');
+        const input = document.getElementById('image-upload');
+        const preview = document.getElementById('preview-image');
 
-        if (fileInput.files && fileInput.files[0]) {
+        if (input.files && input.files[0]) {
             const reader = new FileReader();
-
             reader.onload = function (e) {
-                previewImage.src = e.target.result;
-            }
-
-            reader.readAsDataURL(fileInput.files[0]);
+                preview.src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
         } else {
-            previewImage.src = 'https://placehold.co/400x200'; // Default image
+            preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
         }
     }
     function appendnewPosts(post) {
@@ -489,9 +509,10 @@
             const postElement = document.createElement('div');
             postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
             postElement.setAttribute('data-post-id', post.Id);
-            let truncatedContent = post.Content
             let showMore = false;
-            if (post.Content.length > 300) {
+            let truncatedContent = post.Content || '';
+
+            if (truncatedContent.length > 300) {
                 truncatedContent = post.Content.substring(0, 300) + "...";
                 showMore = true;
             }
@@ -503,9 +524,8 @@
                                                     <p class="text-muted-foreground text-sm">${timeAgoString}</p>
                                             </div>
                                         </div>
-                                             <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
-                                ${truncatedContent}
-                                        </p>
+                                                 ${post.Content ? ` <p  id = "post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data - full - content="${post.Content}" >
+                                    ${truncatedContent} </p>` : ''}
                                         <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
                                         ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
                                         <div class="flex justify-between">

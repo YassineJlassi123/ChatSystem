@@ -64,7 +64,7 @@
  @if (Model.IsProfileOwner)
             {
 <!-- Create Post Section -->
-<div class="bg-card p-4 rounded-lg shadow-md mb-4 max-w-lg mx-auto">
+    <div id="post-creation-section" class="bg-card p-4 rounded-lg shadow-md mb-4 max-w-lg mx-auto">
     <h2 class="text-lg font-bold mb-2">Créer une publication</h2>
     <form id="createPostForm" method="post" enctype="multipart/form-data">
         <div class="flex items-center mb-4" >
@@ -426,9 +426,10 @@
                         const postElement = document.createElement('div');
                         postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
                         postElement.setAttribute('data-post-id', post.Id);
-                        let truncatedContent = post.Content
                         let showMore = false;
-                        if (post.Content.length > 300) {
+                        let truncatedContent = post.Content || '';
+
+                        if (truncatedContent.length > 300) {
                             truncatedContent = post.Content.substring(0, 300) + "...";
                             showMore = true;
                         }
@@ -440,9 +441,8 @@
                                 <p class="text-muted-foreground text-sm">${timeAgoString}</p>
                             </div>
                         </div>
-                                              <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
-                        ${truncatedContent}
-                                </p>
+                                                      ${post.Content ? ` <p  id = "post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data - full - content="${post.Content}" >
+                                ${truncatedContent} </p>` : ''}
                                 <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
                         ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
                         <div class="flex justify-between">
@@ -523,31 +523,39 @@
                 document.getElementById('coverImageForm').submit();
             });
 
-            // Handle create post form submission
             document.getElementById('submitPost').addEventListener('click', async () => {
                 const form = document.getElementById('createPostForm');
                 const formData = new FormData(form);
 
-                // Validate content and image
+                // Get the image file input and file
+                const imageFileInput = document.getElementById('image-upload');
+                const imageFile = imageFileInput.files[0];
+                const imageValidation = document.getElementById('image-validation');
+
+                // Clear previous validation messages
+                document.getElementById('content-validation').innerText = '';
+                imageValidation.innerText = '';
+
                 const content = formData.get('Post.Content').trim();
-                const imageFile = formData.get('Post.Image');
-                if (!content) {
-                    document.getElementById('content-validation').innerText = 'Content is required.';
-                    return;
-                }
-                if (!imageFile.type.startsWith('image/')) {
-                    document.getElementById('image-validation').innerText = 'Only image files are allowed.';
+
+                // Validate content and image
+                if (!content && !imageFile) {
+                    document.getElementById('content-validation').innerText = 'Please provide either content or an image.';
                     return;
                 }
 
-                document.getElementById('content-validation').innerText = '';
-                document.getElementById('image-validation').innerText = '';
+                // Optionally validate image type if an image is provided
+                if (imageFile && imageFile.type && !imageFile.type.startsWith('image/')) {
+                    imageValidation.innerText = 'Only image files are allowed.';
+                    return;
+                }
 
                 try {
                     const response = await fetch('/account/CreatePost', {
                         method: 'POST',
                         body: formData
                     });
+
                     const result = await response.json();
 
                     if (result.success) {
@@ -555,10 +563,12 @@
                         document.getElementById('preview-image').src = '/images/static/gallery.png'; // Clear preview image
                         appendnewPosts(result.post); // Add the new post to the top of the list
                     } else {
-                        console.error('Error creating post:', result.error);
+                        console.error('Error creating post:', result.message); // Display backend error message
+                        document.getElementById('content-validation').innerText = result.message;
                     }
                 } catch (error) {
                     console.error('Error creating post:', error);
+                    document.getElementById('content-validation').innerText = 'An error occurred while creating the post. Please try again.';
                 }
             });
 
@@ -573,14 +583,15 @@
                         preview.src = e.target.result;
                     };
                     reader.readAsDataURL(input.files[0]);
+                } else {
+                    preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
                 }
             }
 
             window.triggerProfileImageUpload = triggerProfileImageUpload;
             window.triggerCoverImageUpload = triggerCoverImageUpload;
             window.previewImage = previewImage;
-        });
-
+            });
 
 
         function appendnewPosts(post) {
@@ -592,12 +603,16 @@
                     const postElement = document.createElement('div');
                     postElement.classList.add('bg-card', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
                     postElement.setAttribute('data-post-id', post.Id);
-                let truncatedContent = post.Content
+                
                 let showMore = false;
-                if (post.Content.length > 300) {
-                    truncatedContent = post.Content.substring(0, 300) + "...";
-                    showMore = true;
-                }
+                let truncatedContent = post.Content || '';
+                   
+                if (truncatedContent.length > 300) {
+                        truncatedContent = post.Content.substring(0, 300) + "...";
+                        showMore = true;
+                    }
+                    
+               
                     postElement.innerHTML = `
                                     <div class="flex items-center mb-4">
                                         <img class="w-12 h-12 rounded-full" src="@Model.User.ProfileImageUrl" alt="User Avatar" />
@@ -606,9 +621,9 @@
                                                             <p class="text-muted-foreground text-sm">${timeAgoString}</p>
                                         </div>
                                     </div>
-                                               <p  id="post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="${post.Content}">
-                ${truncatedContent}
-                        </p>
+                                                    ${post.Content ?` <p  id = "post-content-${post.Id}" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data - full - content="${post.Content}" >
+                        ${truncatedContent} </p>` : ''}
+                        
                         <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-${post.Id}" onclick="togglePostContent(${post.Id})" style="display:none;">Show more</a>
                                             ${post.ImageUrl ? `<img style="width:100%" class="rounded-lg mb-4" src="${post.ImageUrl}" alt="Post Image" />` : ''}
                                     <div class="flex justify-between">
@@ -682,6 +697,35 @@
             // Initialize time ago for existing posts/comments
             updateTimeAgo();
         });
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const newPostContent = urlParams.get('newPostContent');
+            const username = urlParams.get('username');
+
+            if (newPostContent) {
+                // Set the content of the post form
+               
+
+                // Scroll to the post creation section
+                const postCreationSection = document.getElementById('post-creation-section');
+                if (postCreationSection) {
+                    postCreationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                const postContentTextarea = document.querySelector('textarea[name="Post.Content"]');
+                if (postContentTextarea) {
+                    postContentTextarea.value = decodeURIComponent(newPostContent);
+                }
+                // Submit the form automatically
+                const submitButton = document.getElementById('submitPost');
+                if (submitButton) {
+                    submitButton.click();
+                }
+
+                // Optional: Clear the query parameters from the URL after use
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+
 
     </script>
 }

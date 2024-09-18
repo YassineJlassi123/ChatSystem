@@ -17,6 +17,9 @@ using Microsoft.AspNetCore.Authorization;
 using System.Reflection;
 using static jwtlogin.Controllers.AccountController;
 using Microsoft.AspNetCore.Http.HttpResults;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using System.Security.Policy;
 
 namespace jwtlogin.Controllers
 {
@@ -26,9 +29,13 @@ namespace jwtlogin.Controllers
         private readonly ApplicationDbContext _context;
         private readonly TokenService _tokenService;
         private readonly IHubContext<FriendHub> _hubContext;
+        private readonly Cloudinary _cloudinary;
+        private readonly CohereService _cohereService;
 
-        public AccountController(ILogger<AccountController> logger, IHubContext<FriendHub> hubContext, ApplicationDbContext context, TokenService tokenService)
+        public AccountController(CohereService cohereService, Cloudinary cloudinary, ILogger<AccountController> logger, IHubContext<FriendHub> hubContext, ApplicationDbContext context, TokenService tokenService)
         {
+            _cohereService = cohereService;
+            _cloudinary = cloudinary;
             _logger = logger;
             _context = context;
             _tokenService = tokenService;
@@ -183,7 +190,7 @@ namespace jwtlogin.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("accueil", "account");
         }
 
         // GET: FriendRequests
@@ -775,45 +782,56 @@ namespace jwtlogin.Controllers
             {
                 return RedirectToAction("Login");
             }
-            if (profileImage != null && profileImage.Length > 0)
+
+            if (profileImage != null && profileImage.Length > 0 && profileImage.ContentType.StartsWith("image/"))
             {
                 var username = User.Identity.Name;
-
-                // Get the current user
                 var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
 
-                // Remove the old profile image file if it exists
-                if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+                if (user == null)
                 {
-                    var oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/profiles", Path.GetFileName(user.ProfileImageUrl));
-                    if (System.IO.File.Exists(oldFilePath))
+                    TempData["ErrorMessage"] = "User not found.";
+                    return RedirectToAction("Profile");
+                }
+
+               
+
+                    // Upload the new profile image to Cloudinary
+                    var uploadParams = new ImageUploadParams
                     {
-                        System.IO.File.Delete(oldFilePath);
+                        File = new FileDescription(profileImage.FileName, profileImage.OpenReadStream()),
+                        Folder = "profiles",
+                        Transformation = new Transformation().Crop("fill").Gravity("face").Width(500).Height(500)
+                    };
+
+                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                    if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        // Update the user's profile image URL
+                        user.ProfileImageUrl = uploadResult.SecureUrl.ToString();
+                        _context.Update(user);
+                        await _context.SaveChangesAsync();
+
+                        TempData["SuccessMessage"] = "Profile image updated successfully!";
+                        return RedirectToAction("Profile", new { username = user.Username });
                     }
-                }
-
-                // Generate a unique filename for the new image
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(profileImage.FileName);
-
-                // Define the path to save the new image
-                var newFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/profiles", fileName);
-
-                // Save the new image to the file system
-                using (var stream = new FileStream(newFilePath, FileMode.Create))
-                {
-                    await profileImage.CopyToAsync(stream);
-                }
-
-                // Save the new file path in the database
-                user.ProfileImageUrl = "/images/profiles/" + fileName;
-                _context.Update(user);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction("Profile", new { username = user.Username });
+                    else
+                    {
+                        TempData["ErrorMessage"] = "Error uploading new profile image.";
+                        return RedirectToAction("Profile");
+                    }
+              
             }
-
-            return View("Error");
+            else
+            {
+                TempData["ErrorMessage"] = "Invalid file. Please upload a valid image.";
+                return RedirectToAction("Profile");
+            }
         }
+
+      
+
 
 
 
@@ -827,12 +845,12 @@ namespace jwtlogin.Controllers
             var user = await _context.Users
                 .Include(u => u.Friends) // Include the Friends collection
                 .ThenInclude(uf => uf.Friend) // Include the Friend object in UserFriend
-                .Include(u => u.Posts) // Include the Posts collection
+                .Include(u => u.Posts) // Include thFe Posts collection
                 .ThenInclude(p => p.Comments)
                 .ThenInclude(p => p.User)// Include Comments within Posts
                 .Include(u => u.Posts) // Include Posts again to access Interactions
                 .ThenInclude(p => p.Interactions) // Include Interactions within Posts
-                .SingleOrDefaultAsync(u => u.Username == username);
+                .SingleOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
             if (user == null)
             {
@@ -937,7 +955,6 @@ namespace jwtlogin.Controllers
         }
 
 
-
         [HttpPost]
         public async Task<IActionResult> UploadCoverImage(IFormFile coverImage)
         {
@@ -945,44 +962,50 @@ namespace jwtlogin.Controllers
             {
                 return RedirectToAction("Login");
             }
-            if (coverImage != null && coverImage.Length > 0)
+
+            if (coverImage != null && coverImage.Length > 0 && coverImage.ContentType.StartsWith("image/"))
             {
                 var username = User.Identity.Name;
-
-                // Get the current user
                 var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
 
-                // Remove the old cover image file if it exists
-                if (!string.IsNullOrEmpty(user.CoverImageUrl))
+                if (user == null)
                 {
-                    var oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/covers", Path.GetFileName(user.CoverImageUrl));
-                    if (System.IO.File.Exists(oldFilePath))
-                    {
-                        System.IO.File.Delete(oldFilePath);
-                    }
+                    TempData["ErrorMessage"] = "User not found.";
+                    return RedirectToAction("Profile");
                 }
+               
 
-                // Generate a unique filename for the new image
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(coverImage.FileName);
-
-                // Define the path to save the new image
-                var newFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/covers", fileName);
-
-                // Save the new image to the file system
-                using (var stream = new FileStream(newFilePath, FileMode.Create))
+                // Upload the new cover image to Cloudinary
+                var uploadParams = new ImageUploadParams
                 {
-                    await coverImage.CopyToAsync(stream);
+                    File = new FileDescription(coverImage.FileName, coverImage.OpenReadStream()),
+                    Folder = "covers",
+                    Transformation = new Transformation().Crop("fill").Gravity("face").Width(1500).Height(500)
+                };
+
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    // Update the user's cover image URL
+                    user.CoverImageUrl = uploadResult.SecureUrl.ToString();
+                    _context.Update(user);
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "Cover image updated successfully!";
+                    return RedirectToAction("Profile", new { username = user.Username });
                 }
-
-                // Save the new file path in the database
-                user.CoverImageUrl = "/images/covers/" + fileName;
-                _context.Update(user);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction("Profile", new { username = user.Username });
+                else
+                {
+                    TempData["ErrorMessage"] = "Error uploading new cover image.";
+                    return RedirectToAction("Profile");
+                }
             }
-
-            return View("Error");
+            else
+            {
+                TempData["ErrorMessage"] = "Invalid file. Please upload a valid image.";
+                return RedirectToAction("Profile");
+            }
         }
 
 
@@ -995,43 +1018,59 @@ namespace jwtlogin.Controllers
                 return RedirectToAction("Login");
             }
 
+            // Check if either content or image is provided
+            if (string.IsNullOrWhiteSpace(model.Post.Content) &&
+                (model.Post.Image == null || model.Post.Image.Length == 0 || !model.Post.Image.ContentType.StartsWith("image/")))
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "Please provide either content or a valid image."
+                });
+            }
+
             string imageUrl = null;
 
-            // Handle image upload
-            if (model.Post.Image != null && model.Post.Image.Length > 0)
+            // Handle image upload if provided
+            if (model.Post.Image != null && model.Post.Image.Length > 0 && model.Post.Image.ContentType.StartsWith("image/"))
             {
-                var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.Post.Image.FileName);
-                var filePath = Path.Combine(uploadDir, fileName);
-
-                if (!Directory.Exists(uploadDir))
+                var uploadParams = new ImageUploadParams
                 {
-                    Directory.CreateDirectory(uploadDir);
-                }
+                    File = new FileDescription(model.Post.Image.FileName, model.Post.Image.OpenReadStream()),
+                    Folder = "posts",
+                    Transformation = new Transformation().Crop("fill").Gravity("face").Width(800).Height(600)
+                };
 
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    await model.Post.Image.CopyToAsync(fileStream);
+                    imageUrl = uploadResult.SecureUrl.ToString();
                 }
-
-                imageUrl = "/uploads/" + fileName;
+                else
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Error uploading image."
+                    });
+                }
             }
 
             var currentUser = await _context.Users.SingleOrDefaultAsync(u => u.Username == User.Identity.Name);
 
             var post = new Post
             {
-                Content = model.Post.Content,
-                ImageUrl = imageUrl,
+                Content = model.Post.Content, // Can be null or empty
+                ImageUrl = imageUrl, // Can be null if no image is provided
                 UserId = currentUser.Id,
                 CreatedAt = DateTime.UtcNow
             };
 
-
             _context.Posts.Add(post);
             await _context.SaveChangesAsync();
 
-            // Redirect to the profile page after creating the post
+            // Return JSON response with post details
             return Json(new
             {
                 success = true,
@@ -1049,13 +1088,53 @@ namespace jwtlogin.Controllers
             });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Command([FromBody] VoiceCommandRequest request)
+        {
+            // Prepare the prompt for Cohere
+            var prompt = $@"
+You are given a list of commands and a user input. Your task is to determine which command from the list best matches the user input, only if the input clearly aligns with the intent or structure of the command.
+
+User Input: '{request.Text}'
+Commands List: {string.Join(", ", request.Commands)}
+
+Instructions:
+1. Only return a command if the user input **clearly** relates to one of the commands and has a strong similarity in wording or intent. If the user input is vague, irrelevant, or inappropriate, return 'no'.
+2. Ignore irrelevant or inappropriate words (e.g., insults, casual conversation, random phrases like 'what are you doing', 'ok', 'fine'). These should not trigger a command match.
+3. For placeholders like <username> or <content>:
+   - Extract **only** meaningful values (e.g., a valid name for <username> or valid text for <content>). If the input does not provide a valid placeholder value, return 'placeholder value not found'.
+4. If no command is a close match based on the user's input, return 'no'. Do not attempt to match input that is inappropriate, offensive, or too far removed from any command.
+
+Your response must follow this format:
+1. **Command:** The exact command that best matches the user input, if any.
+2. **Extracted Placeholder Values:** The extracted placeholder value as plain text, or 'None' if there are no placeholders or if the user input is inappropriate or contains no valid placeholder.
+
+If no command is relevant, return 'no'.";
+
+
+
+            // Get completion from Cohere
+            var response = await _cohereService.GetChatResponseAsync(prompt);
+
+            // Return the response directly
+            return Ok(new { command = response.Trim() });
+        }
+
+        public class VoiceCommandRequest
+    {
+        public string Text { get; set; }
+        public string[] Commands { get; set; }
+    }
+
         public async Task<IActionResult> Accueil()
         {
             if (!User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Login");
             }
+
             var currentUser = await _context.Users
+                .Include(u => u.Friends) // Assuming you have a Friends collection
                 .SingleOrDefaultAsync(u => u.Username == User.Identity.Name);
 
             if (currentUser == null)
@@ -1063,25 +1142,52 @@ namespace jwtlogin.Controllers
                 return NotFound(); // Or handle user not found case
             }
 
-            // Get the list of friends' IDs for the current user
-            var friendIds = _context.UserFriends
-                .Where(uf => uf.UserId == currentUser.Id)
-                .Select(uf => uf.FriendId)
-                .ToList();
+            var friendIds = currentUser.Friends.Select(f => f.FriendId).ToList();
+            var friendCount = friendIds.Count;
+            var currentUserId = currentUser.Id;
 
-            // Fetch a limited number of posts to initialize the page
-            var initialPosts = await _context.Posts
-                .Include(p => p.User) // To show friend's info (username, profile picture)
-                .Include(p => p.Comments)
-                .ThenInclude(p => p.User)// To show comment count
-                .Include(p => p.Interactions) // To show like/jadore count
-                .Where(p => friendIds.Contains(p.UserId))
-                .OrderByDescending(p => p.CreatedAt)
-                .Take(10) // Fetch initial set of posts
-                .ToListAsync();
+            IQueryable<Post> postQuery;
 
-            var totalPosts = await _context.Posts
-                .CountAsync(p => friendIds.Contains(p.UserId));
+            if (friendCount < 20)
+            {
+                // Fetch posts from all users, excluding current user's posts
+                postQuery = _context.Posts
+                    .Where(p => p.UserId != currentUserId) // Exclude current user's posts
+                    .Include(p => p.User) // To show user's info
+                    .Include(p => p.Comments) // To show comments
+                    .ThenInclude(c => c.User) // To show comment user's info
+                    .Include(p => p.Interactions) // To show likes/jadore count
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(10); // Fetch initial set of posts
+            }
+            else
+            {
+                // Fetch posts from friends only, excluding current user's posts
+                postQuery = _context.Posts
+                    .Where(p => friendIds.Contains(p.UserId) && p.UserId != currentUserId) // Exclude current user's posts
+                    .Include(p => p.User) // To show user's info
+                    .Include(p => p.Comments) // To show comments
+                    .ThenInclude(c => c.User) // To show comment user's info
+                    .Include(p => p.Interactions) // To show likes/jadore count
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(10); // Fetch initial set of posts
+            }
+
+            var initialPosts = await postQuery.ToListAsync();
+
+            // Count total posts for pagination
+            int totalPosts;
+
+            if (friendCount < 20)
+            {
+                totalPosts = await _context.Posts
+                    .CountAsync(p => p.UserId != currentUserId); // Exclude current user's posts
+            }
+            else
+            {
+                totalPosts = await _context.Posts
+                    .CountAsync(p => friendIds.Contains(p.UserId) && p.UserId != currentUserId); // Exclude current user's posts
+            }
 
             var viewModel = new AccueilViewModel
             {
@@ -1102,7 +1208,9 @@ namespace jwtlogin.Controllers
             {
                 return RedirectToAction("Login");
             }
+
             var currentUser = await _context.Users
+                .Include(u => u.Friends) // Assuming you have a Friends collection
                 .SingleOrDefaultAsync(u => u.Username == User.Identity.Name);
 
             if (currentUser == null)
@@ -1110,25 +1218,40 @@ namespace jwtlogin.Controllers
                 return NotFound(); // Or handle user not found case
             }
 
-            var friendIds = _context.UserFriends
-                .Where(uf => uf.UserId == currentUser.Id)
-                .Select(uf => uf.FriendId)
-                .ToList();
+            var friendIds = currentUser.Friends.Select(f => f.FriendId).ToList();
+            var friendCount = friendIds.Count;
+            var currentUserId = currentUser.Id;
 
-            var friendPosts = await _context.Posts
-                .Where(p => friendIds.Contains(p.UserId))
-                .OrderByDescending(p => p.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+            IQueryable<Post> postQuery;
+
+            if (friendCount < 20)
+            {
+                // Fetch posts from all users, excluding current user's posts
+                postQuery = _context.Posts
+                    .Where(p => p.UserId != currentUserId) // Exclude current user's posts
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize);
+            }
+            else
+            {
+                // Fetch posts from friends only, excluding current user's posts
+                postQuery = _context.Posts
+                    .Where(p => friendIds.Contains(p.UserId) && p.UserId != currentUserId) // Exclude current user's posts
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize);
+            }
+
+            var friendPosts = await postQuery
                 .Select(p => new PostDto
                 {
-                  
                     Id = p.Id,
                     Content = p.Content,
                     ImageUrl = p.ImageUrl,
                     CreatedAt = p.CreatedAt,
-                    JaimeCount=p.Interactions.Count,
-                    CommentCount=p.Comments.Count,
+                    JaimeCount = p.Interactions.Count,
+                    CommentCount = p.Comments.Count,
                     User = new UserDto
                     {
                         Username = p.User.Username,
@@ -1141,20 +1264,32 @@ namespace jwtlogin.Controllers
                         CreatedAt = c.CreatedAt,
                         Username = c.User.Username,
                         ProfileImageUrl = c.User.ProfileImageUrl
-                    }).ToList() // Fetch and map comments here
+                    }).ToList()
                 })
                 .ToListAsync();
 
-            var totalPosts = await _context.Posts
-                .CountAsync(p => friendIds.Contains(p.UserId));
+            int totalPosts;
+
+            if (friendCount < 20)
+            {
+                totalPosts = await _context.Posts
+                    .CountAsync(p => p.UserId != currentUserId); 
+            }
+            else
+            {
+                totalPosts = await _context.Posts
+                    .CountAsync(p => friendIds.Contains(p.UserId) && p.UserId != currentUserId); 
+            }
 
             var result = new
             {
                 posts = friendPosts,
-                totalposts = totalPosts
+                totalPosts
             };
+
             return Json(result);
         }
+
 
         [HttpPost]
         public async Task<IActionResult> LikePost([FromBody] int postId)

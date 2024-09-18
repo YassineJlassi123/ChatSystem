@@ -37,7 +37,7 @@
     <div class="bg-white shadow-md h-16 flex justify-between items-center p-4">
         <div class="flex items-center space-x-4">
             <button class="flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
-                <img src="/images/static/letter-y.png" alt="Search" class="w-6 h-6" />
+                <a href="@Url.Action("accueil", "Account")"> <img src="/images/static/letter-y.png" alt="Search" class="w-6 h-6" /></a>
             </button>
             @if (User.Identity.IsAuthenticated)
             {
@@ -68,7 +68,7 @@
                 <div class="relative">
                     <button id="friendRequestIcon" class="relative flex items-center justify-center w-10 h-10 bg-zinc-200 rounded-full hover:bg-zinc-300 transition">
                         <img src="/images/static/add-user.png" alt="Friend Requests" class="w-4 h-4" />
-                        <span id="unreadRequestCount" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">0</span>
+                        <span id="unreadRequestCount" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"></span>
                     </button>
 
                     <!-- Friend Requests Dropdown Container -->
@@ -126,12 +126,29 @@
     </div>
 
     <div>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <div style="padding-top:30px" class=" flex flex-col justify-center items-center bg-background text-primary-foreground p-0 m-0">
+                <select id="language-select" class="w-40 sm:w-64 h-10 sm:h-12 px-2 sm:px-4 py-1 sm:py-2 mb-2 sm:mb-4 bg-input text-primary-foreground rounded-lg focus:outline-none">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+                <option value="fr-FR">French (France)</option>
+                <option value="ar-AR">Arabic (Saudi Arabia)</option>
+            </select>
+            <input id="result" type="text" placeholder="Speak here..." class="w-40 sm:w-64 h-10 sm:h-12 px-2 sm:px-4 py-1 sm:py-2 mb-2 sm:mb-4 bg-input text-primary-foreground rounded-lg focus:outline-none" />
+            <button id="micButton" class="w-12 sm:w-16 h-12 sm:h-16 flex justify-center items-center bg-primary text-primary-foreground rounded-full shadow-lg transition-colors duration-300 ease-in-out">
+                <img src="~/images/static/musical.png" alt="microphone" class="w-4 sm:w-6 h-4 sm:h-6" />
+            </button>
+            <p id="feedbackLabel" class="text-xs sm:text-sm mt-1 sm:mt-2"></p>
+        </div>
+       }
         <main role="main" class="container mx-auto ">
             @RenderBody()
         </main>
     </div>
 
-  
+
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
 
     <!-- Include any required JS files -->
     <script src="https://unpkg.com/unlazy@0.11.3/dist/unlazy.with-hashing.iife.js" defer init></script>
@@ -141,6 +158,198 @@
 
     <script>
 
+        const commands = [ 
+            "open my profile",
+            "search for <username>",
+            "add new post <content>",
+            "open notification",
+            ,"open <username>'s profile",
+            "send invitation to <username>"
+           
+        ];
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = true; // Keep recognizing until stopped
+            recognition.interimResults = true; // Show interim results
+
+            const micButton = document.getElementById('micButton');
+            const feedbackLabel = document.getElementById('feedbackLabel');
+            const resultInput = document.getElementById('result');
+            const languageSelect = document.getElementById('language-select');
+            let isRecording = false;
+
+            // Update recognition language based on selection
+            languageSelect.addEventListener('change', (event) => {
+                recognition.lang = event.target.value;
+            });
+
+            // Start recognition function
+            function startRecognition() {
+                recognition.start();
+                micButton.classList.add('bg-red-500'); // Change color when listening
+                feedbackLabel.textContent = 'Listening...';
+                isRecording = true;
+            }
+
+            // Stop recognition function
+            function stopRecognition() {
+                recognition.stop();
+                micButton.classList.remove('bg-red-500'); // Revert color when stopped
+                feedbackLabel.textContent = '';
+                isRecording = false;
+            }
+
+            // Add mouse and touch events to the mic button for press and release actions
+            micButton.addEventListener('mousedown', startRecognition);
+            micButton.addEventListener('mouseup', stopRecognition);
+            micButton.addEventListener('touchstart', (event) => {
+                event.preventDefault(); // Prevent default touch behavior
+                startRecognition(); // Start recognizing voice on touch
+            });
+            micButton.addEventListener('touchend', stopRecognition);
+
+            // Process speech recognition result
+            recognition.onresult = async function (event) {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                resultInput.value = transcript;
+
+                // Trigger only when speech ends
+                recognition.onspeechend = async function () {
+                    const response = await fetch('/account/Command', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            text: transcript,
+                            commands: commands
+                        })
+                    });
+
+                    const data = await response.json();
+                    const result = data.command;
+                    console.log(result);
+                    const commandMatch = result.match(/\*\*Command:\*\* (.+)/);
+                    const placeholderMatch = result.match(/\*\*Extracted Placeholder Values:\*\* (.+)/);
+
+                    const command = commandMatch ? commandMatch[1] : 'no';
+                    const extractedPlaceholder = placeholderMatch ? placeholderMatch[1] : 'None';
+
+                    console.log("Command:", command);
+                    console.log("Extracted Placeholder Values:", extractedPlaceholder);
+                    switch (command) {
+                        case "add new post <content>":
+                            if (extractedPlaceholder !== 'None') {
+                                // Process the command with the extracted content
+                                const profileUrl = '@Url.Action("Profile", "Account")';
+                                const encodedContent = encodeURIComponent(extractedPlaceholder);
+
+                                // Navigate to profile page with username and new post content
+                                window.location.href = `${profileUrl}?username=${"@User.Identity.Name"}&newPostContent=${encodedContent}`;                                // Add your logic here to handle adding a new post
+                            } else {
+                                feedbackLabel.textContent =  ("user value not found.");
+                            }
+                            break;
+
+                        case "open my profile":
+                            const profileUrl = '@Url.Action("Profile", "Account")';
+                            window.location.href = `${profileUrl}?username=${"@User.Identity.Name"}`;
+                          
+                            break;
+
+                        case "search for <username>":
+                            if (extractedPlaceholder !== 'None') {
+                                // Code to search for the user with the extracted username
+                                searchContainer.classList.remove('hidden');
+                                searchInput.value = extractedPlaceholder; // Set the search input to the query
+                                searchInput.focus();
+                                searchInput.dispatchEvent(new Event('input')); // Trigger the input event
+                            } else {
+                                feedbackLabel.textContent = ("Username placeholder value not found.");
+                               
+                            }
+                            break;
+
+                        case "open notification":
+                            // Code to open notifications
+                            document.getElementById('notificationIcon').click();
+                            break;
+
+                        case "open <username>'s profile":
+                            if (extractedPlaceholder !== 'None') {
+                                normalizedPlaceholder=extractedPlaceholder.toLowerCase();
+                                const profileUrl = '@Url.Action("Profile", "Account")';
+                                window.location.href = `${profileUrl}?username=${normalizedPlaceholder}`;
+                            } else {
+                                feedbackLabel.textContent = ("Username placeholder value not found.");
+                            }
+                            break;
+
+                        case "send invitation to <username>":
+                            if (extractedPlaceholder !== 'None') {
+                                searchContainer.classList.remove('hidden');
+                                searchInput.value = extractedPlaceholder; // Set the search input to the query
+                                searchInput.focus();
+                                searchInput.dispatchEvent(new Event('input')); // Trigger the input event
+                                const normalizedPlaceholder = extractedPlaceholder.trim().toLowerCase();
+
+                                // Wait for search results to be rendered
+                                setTimeout(() => {
+                                    // Find the 'Add Friend' button for the extracted username
+                                    const addFriendButton = Array.from(searchResults.querySelectorAll('.add-friend-btn'))
+                                        .find(button => button.dataset.userId.trim().toLowerCase() === normalizedPlaceholder);
+
+                                    if (addFriendButton) {
+                                        addFriendButton.click(); // Click the add friend button
+                                        console.log("Invitation sent to: " + extractedPlaceholder);
+                                    } else {
+                                        console.log("No add friend button found for: " + extractedPlaceholder);
+                                    }
+                                }, 2000);
+                            } else {
+                                feedbackLabel.textContent = ("Username placeholder value not found.");
+                            }
+                            break;
+
+                        case "no":
+                            // Handle the case where no command matches
+                            console.log("No valid command found for the input.");
+                            break;
+
+                        default:
+                            feedbackLabel.textContent = ("Unrecognized command.");
+
+                            // Handle any unrecognized commands
+                            break;
+                    }
+                   
+                };
+            };
+           
+
+            // Handle recognition errors
+            recognition.onerror = function (event) {
+                console.error('Speech recognition error:', event.error);
+            };
+
+            // Define voice command handling logic
+            function handleVoiceCommand(command) {
+
+                if (command) {
+                    // Navigate to profile
+                   
+                } else if (command.startsWith('search for')) {
+                    const query = command.replace('search for', '').trim();
+                    // Assume there's a search input and container in the UI
+                  
+                }
+            }
+        } else {
+            alert("Speech recognition not supported in this browser.");
+        }
         let pageNumber = 1;
         let hasMoreNotifications = true;
         let isLoading = false;
@@ -362,6 +571,9 @@
             // Handle friend request dropdown
             if (!event.target.closest('#friendRequestIcon') && !event.target.closest('#friendRequestDropdown')) {
                 friendRequestDropdown.classList.add('hidden');
+            }
+            if (!event.target.closest('#searchButton') && !event.target.closest('#searchContainer')) {
+                searchContainer.classList.add('hidden');
             }
         });
 
@@ -826,6 +1038,11 @@
                 unreadRequestCountElement.style.display = 'none';
             }
         }
+        connection.on("ReceiveMessage", (message) => {
+            // Handle incoming message
+            countElement.textContent = parseInt(countElement.textContent) + 1;
+
+        });
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 

@@ -195,10 +195,8 @@
                         if (!response.ok) {
                             throw new Error('Failed to mark message as read.');
                         }
-                        document.querySelectorAll('[data-date]').forEach(element => {
-                            const date = element.getAttribute('data-date');
-                            element.textContent = timeAgo(date);
-                        });
+
+                    
                         const conversationElement = document.getElementById(elementId);
                        
                             conversationElement.classList.remove('bg-zinc-300');
@@ -220,7 +218,10 @@
                     .then(html => {
                         const conversationDetails = document.getElementById('conversation-details');
                         conversationDetails.innerHTML = html;
-
+                            document.querySelectorAll('[data-date]').forEach(element => {
+                                const date = element.getAttribute('data-date');
+                                element.textContent = timeAgo(date);
+                            });
                         // Initialize scripts for the newly loaded partial view
                         initializeChatScripts();
                     })

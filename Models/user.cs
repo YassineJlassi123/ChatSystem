@@ -12,8 +12,8 @@ public class User
     public string Role { get; set; }
     public string? GoogleId { get; set; } // Nullable, only populated for Google users
     public bool IsOnline { get; set; } = false;
-    public string ProfileImageUrl { get; set; } = "/images/static/profile.png";
-    public string CoverImageUrl { get; set; } = "/images/static/cover.png";  // Cover image URL
+    public string ProfileImageUrl { get; set; } = "https://res.cloudinary.com/dvkjekfxi/image/upload/v1726570046/profile_hrv7zb.png";
+    public string CoverImageUrl { get; set; } = "https://res.cloudinary.com/dvkjekfxi/image/upload/v1726570122/cover_jwscfm.png";  // Cover image URL
     public int NumberOfFriends { get; set; } // Add this property
 
 

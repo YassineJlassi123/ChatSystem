@@ -118,3 +118,6 @@ C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Newtonsoft.Json.dll
 C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\System.Net.WebSockets.WebSocketProtocol.dll
 C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\package-lock.json
 C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\package.json
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\CloudinaryDotNet.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\DotNetEnv.dll
+C:\Users\Yassine\source\repos\jwtlogin\bin\Debug\net8.0\Sprache.dll

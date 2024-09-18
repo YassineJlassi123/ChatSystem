@@ -17,18 +17,6 @@
       "PackagePath": "staticwebassets\\favicon.ico"
     },
     {
-      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\covers\\fb96ee76-2021-4f70-b6e9-a2c680a22e76.jfif",
-      "PackagePath": "staticwebassets\\images\\covers\\fb96ee76-2021-4f70-b6e9-a2c680a22e76.jfif"
-    },
-    {
-      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\profiles\\22232227-e183-4349-a4b6-909ff3500143.jpg",
-      "PackagePath": "staticwebassets\\images\\profiles\\22232227-e183-4349-a4b6-909ff3500143.jpg"
-    },
-    {
-      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\profiles\\2fff7806-ed66-4e0a-bb19-38fd51b65e5e.jpg",
-      "PackagePath": "staticwebassets\\images\\profiles\\2fff7806-ed66-4e0a-bb19-38fd51b65e5e.jpg"
-    },
-    {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\add-user.png",
       "PackagePath": "staticwebassets\\images\\static\\add-user.png"
     },
@@ -55,6 +43,10 @@
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\message.png",
       "PackagePath": "staticwebassets\\images\\static\\message.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\musical.png",
+      "PackagePath": "staticwebassets\\images\\static\\musical.png"
     },
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\notification.png",

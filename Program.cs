@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.SignalR;
+using DotNetEnv;
+using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,14 +16,22 @@ builder.Services.AddControllersWithViews().AddJsonOptions(options =>
     options.JsonSerializerOptions.PropertyNamingPolicy = null; // Use this to keep property names as-is
 });
 builder.Services.AddRazorPages();  // Add Razor Pages support
+DotNetEnv.Env.Load();
+var cloudName = Environment.GetEnvironmentVariable("CloudinaryCloudName");
+var apiKey = Environment.GetEnvironmentVariable("CloudinaryApiKey");
+var apiSecret = Environment.GetEnvironmentVariable("CloudinaryApiSecret");
+var CohereSecret = Environment.GetEnvironmentVariable("CohereSecret");
 
-// Get sensitive values from environment variables
 var connectionString = Environment.GetEnvironmentVariable("DefaultConnection") ?? throw new InvalidOperationException("Connection string not configured.");
 var jwtIssuer = Environment.GetEnvironmentVariable("JwtIssuer") ?? throw new InvalidOperationException("JWT Issuer not configured.");
 var jwtAudience = Environment.GetEnvironmentVariable("JwtAudience") ?? throw new InvalidOperationException("JWT Audience not configured.");
 var jwtKey = Environment.GetEnvironmentVariable("JwtKey") ?? throw new InvalidOperationException("JWT Key not configured.");
 var googleClientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? throw new InvalidOperationException("Google Client ID not configured.");
 var googleClientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? throw new InvalidOperationException("Google Client Secret not configured.");
+var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
+var cloudinary = new Cloudinary(cloudinaryAccount);
+builder.Services.AddSingleton(cloudinary);
+builder.Services.AddSingleton(new CohereService(CohereSecret));
 
 // Ensure JWT key is long enough
 if (jwtKey.Length < 16)

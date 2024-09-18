@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace jwtlogin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240916095621_InitialCreate")]
+    [Migration("20240918142257_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -157,7 +157,6 @@ namespace jwtlogin.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Content")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
