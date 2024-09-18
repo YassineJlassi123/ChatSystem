@@ -186,7 +186,7 @@ namespace jwtlogin.Controllers
             Response.Cookies.Append("jwtToken", token, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // Set to true if using HTTPS
+                Secure = true, // Set to true if using HTTPS
                 SameSite = SameSiteMode.Strict
             });
 
