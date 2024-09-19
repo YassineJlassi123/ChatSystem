@@ -336,6 +336,7 @@
         function appendPosts(posts) {
 
             const postContainer = document.getElementById('post-container');
+            const postDetailsUrl = '@Url.Action("PostDetails", "Account", new { postId = "__postId__" })';
 
             posts.forEach(post => {
                 const timeAgoString = timeAgo(post.CreatedAt);
@@ -352,9 +353,13 @@
                         truncatedContent = post.Content.substring(0, 300) + "...";
                         showMore = true;
                     }
+                    const dynamicPostDetailsUrl = postDetailsUrl.replace("__postId__", post.Id);
+
                     postElement.innerHTML = `
                     <div class="flex items-center mb-4">
-                        <img class="w-12 h-12 rounded-full" src="${post.User.ProfileImageUrl || 'https://placehold.co/48x48'}" alt="User Avatar" />
+                                <a href="javascript:void(0);" class="view-profile-link" data-username="${post.User.Username}" onclick="viewUserProfile('${post.User.Username}')">
+            <img class="w-12 h-12 rounded-full cursor-pointer" src="${post.User.ProfileImageUrl || 'https://placehold.co/48x48'}" alt="User Avatar" />
+        </a>
                         <div class="ml-3">
                             <h2 class="text-lg font-semibold">${post.User.Username}</h2>
                                 <p class="text-muted-foreground text-sm">${timeAgoString}</p>
@@ -372,10 +377,10 @@
                             <span class="ml-2 text-muted-foreground" id="like-count-${post.Id}">${post.JaimeCount}</span>
                         </div>
                         <div class="flex items-center">
-                                <button class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80 comment-button" data-post-id="${post.Id}">
-                                        💬
-                                    </button>
-                                        <button>    <span class="ml-2 text-muted-foreground comment-count" id="comment-count-${post.Id}" data-post-id="${post.Id}">${post.Comments.length} comments</span>  </button>
+                                    <a href="${dynamicPostDetailsUrl}" class="bg-secondary text-secondary-foreground p-2 rounded-full hover:bg-secondary/80">
+                                    💬
+                                </a>
+                                             <a href="${dynamicPostDetailsUrl}">    <button>    <span class="ml-2 text-muted-foreground comment-count" id="comment-count-${post.Id}" data-post-id="${post.Id}">${post.Comments.length} comments</span>  </button></a>
                         </div>
                     </div>
                       <div class="mt-4">
@@ -598,4 +603,8 @@
         // Initialize time ago for existing posts/comments
         updateTimeAgo();
     });
+    function viewUserProfile(username) {
+        const profileUrl = '@Url.Action("Profile", "Account")';  // Razor generates the URL for the profile action
+        window.location.href = `${profileUrl}?username=${encodeURIComponent(username)}`;
+    }
 </script>

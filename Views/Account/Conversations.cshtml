@@ -156,13 +156,13 @@
 
             function addMessageToChat(message) {
                 const messageElement = document.createElement('div');
-                    const timeAgoString = timeAgo(message.sentAt);
+                    const timeAgoString = timeAgo(message.SentAt);
 
                 messageElement.innerHTML = `
-                <div class="flex ${message.senderUsername === '@User.Identity.Name' ? 'justify-end' : 'justify-start'} mb-4">
-                    <div class="p-2 rounded-lg max-w-xs break-words inline-block ${message.senderUsername === '@User.Identity.Name' ? 'bg-blue-200 text-right' : 'bg-gray-200 text-left'
+                <div class="flex ${message.SenderUsername === '@User.Identity.Name' ? 'justify-end' : 'justify-start'} mb-4">
+                    <div class="p-2 rounded-lg max-w-xs break-words inline-block ${message.SenderUsername === '@User.Identity.Name' ? 'bg-blue-200 text-right' : 'bg-gray-200 text-left'
                     }">
-                        <span>${message.content}</span>
+                        <span>${message.Content}</span>
                                     <span class="text-muted-foreground block text-sm">${timeAgoString}</span>
                     </div>
                 </div>

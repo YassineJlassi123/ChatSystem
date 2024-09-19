@@ -62,7 +62,7 @@ namespace jwtlogin.Controllers
                 return Json(new { success = false, message = "Invalid input" });
             }
 
-            if (await _context.Users.AnyAsync(u => u.Username == model.Username))
+            if (await _context.Users.AnyAsync(u => u.Username == model.Username.ToLower()))
             {
                 return Json(new { success = false, message = "Username already exists" });
             }

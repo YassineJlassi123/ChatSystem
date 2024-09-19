@@ -61,7 +61,9 @@
             @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
             {
                 <div class="flex items-center mt-4">
+                    <a href="javascript:void(0);" class="view-profile-link" data-username="@comment.Username">
                     <img class="w-10 h-10 rounded-full" src="@comment.UserProfileImageUrl" alt="User Avatar" />
+                    </a>
                     <div class="ml-3">
                         <h3 class="text-sm font-semibold">@comment.Username</h3>
                         <p class="text-muted-foreground text-xs" data-date="@comment.CreatedAt.ToString("o")"></p>
@@ -104,7 +106,15 @@
             }
         });
     };
-
+    document.querySelectorAll('.view-profile-link').forEach(link => {
+        link.addEventListener('click', function () {
+            const username = this.getAttribute('data-username');  // Get the user's username from the data attribute
+            if (username) {
+                const profileUrl = '@Url.Action("Profile", "Account")';  // Razor generates the URL for the profile action
+                window.location.href = `${profileUrl}?username=${encodeURIComponent(username)}`;
+            }
+        });
+    });
     function togglePostContent(postId) {
         const postContentElement = document.getElementById(`post-content-${postId}`);
         const fullContent = postContentElement.getAttribute('data-full-content');
@@ -295,4 +305,5 @@
         if (minuteInterval === 1) return `1 minute ago`;
         return `Just now`;
     }
+
 </script>
