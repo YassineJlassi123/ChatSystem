@@ -1,0 +1,79 @@
+﻿<div id="cont1">
+
+</div>
+    <script>
+        // Function to go back to the main page
+        function goBack() {
+            window.history.back(); // Navigate back to the previous page
+        }
+
+        // Get parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const latitude = parseFloat(urlParams.get('latitude'));
+        const longitude = parseFloat(urlParams.get('longitude'));
+        const hologramText = urlParams.get('hologramText');
+
+        // Check if parameters are valid
+        if (!latitude || !longitude || !hologramText) {
+            alert('Invalid parameters');
+            window.location.href = 'index.html'; // Redirect if parameters are missing
+        } else {
+            // Check if geolocation is supported
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLatitude = position.coords.latitude;
+                        const userLongitude = position.coords.longitude;
+                        const distance = calculateDistance(userLatitude, userLongitude, latitude, longitude);
+
+                        if (distance <= 2) { // Check if within 2 km
+                            console.log('You are close enough to see the hologram.');
+
+                            // Create AR scene
+                            const arScene = document.createElement('div');
+                      
+                            arScene.classList.add('fixed', 'top-0', 'left-0', 'w-full', 'h-full', 'z-50'); // Use Tailwind classes
+
+                            arScene.innerHTML = `
+                                            <a-scene embedded arjs='sourceType: webcam;' class="w-full h-full">
+                                            <a-marker preset='hiro'>
+                                                <a-text value="${hologramText}" position='0 50 -10' scale='20 20 20' color='white'></a-text>
+                                            </a-marker>
+                                            <a-entity camera></a-entity>
+                                        </a-scene>
+                                    `;
+                        const myDiv = document.getElementById('cont1');
+                        myDiv.appendChild(arScene);
+                        } else {
+                            alert('You are too far from the hologram location.');
+                        }
+                    },
+                    (error) => {
+                        console.error('Error getting geolocation:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        }
+
+        // Helper function to calculate distance between two coordinates
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c; // Distance in km
+            return distance;
+        }
+    </script>
+

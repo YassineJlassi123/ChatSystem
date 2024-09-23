@@ -385,118 +385,19 @@
                 y: event.touches[0].clientY
             };
         });
+
+
+
+
         function openARView(latitude, longitude, hologramText) {
-            console.log(`Opening AR view for hologram: ${hologramText} at (${latitude}, ${longitude})`);
+            const arViewUrl = '@Url.Action("ARView", "Account")'; // Generate the URL for the AR view action
+            const encodedHologramText = encodeURIComponent(hologramText); // Encode the hologram text for the URL
 
-            // Remove existing AR scene if present
-            const existingScene = document.getElementById('ar-scene');
-            if (existingScene) {
-                document.body.removeChild(existingScene);
-            }
+            // Construct the complete URL with parameters
+            const url = `${arViewUrl}?latitude=${latitude}&longitude=${longitude}&hologramText=${encodedHologramText}`;
 
-            // Check if WebXR is supported
-            if (navigator.xr) {
-                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                    if (supported) {
-                        // Create video element to test camera access
-                        const video = document.createElement('video');
-                        video.setAttribute('autoplay', 'true');
-                        video.setAttribute('playsinline', 'true'); // Important for iOS
-                        document.body.appendChild(video);
-
-                        // Request camera access
-                        navigator.mediaDevices.getUserMedia({ video: true })
-                            .then(stream => {
-                                video.srcObject = stream;
-                                video.play();
-
-                                // Create AR scene after successfully accessing the camera
-                                const arScene = document.createElement('div');
-                                arScene.id = 'ar-scene';
-                                arScene.style.position = 'fixed';
-                                arScene.style.top = '0';
-                                arScene.style.left = '0';
-                                arScene.style.width = '100%';
-                                arScene.style.height = '100%';
-                                arScene.style.zIndex = '9999';
-                                arScene.innerHTML = `
-                                    <a-scene embedded arjs='sourceType: webcam;'>
-                                        <a-text id="ar-text" value="${hologramText}" position="0 0 0" scale="5 5 5" color="white"></a-text>
-                                        <a-entity camera look-controls position="0 0 0"></a-entity>
-                                    </a-scene>
-                                `;
-
-                                document.body.appendChild(arScene); // Inject the AR scene into the body
-                            })
-                            .catch(error => {
-                                console.error('Error accessing the camera: ', error);
-                                alert('Could not access the camera. Check permissions.');
-                            });
-                    } else {
-                        console.log('Immersive VR is not supported on this device.');
-                        alert('Immersive VR is not supported on your device.');
-                    }
-                }).catch((error) => {
-                    console.error('Error checking session support:', error);
-                });
-            } else {
-                console.error('WebXR is not supported in this browser.');
-                alert('WebXR is not supported in this browser.');
-            }
-
-            // Request geolocation permission
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userLatitude = position.coords.latitude;
-                        const userLongitude = position.coords.longitude;
-
-                        const distance = calculateDistance(userLatitude, userLongitude, latitude, longitude);
-                        if (distance <= 2) {
-                            console.log('You are close enough to see the hologram.');
-                        } else {
-                            alert('You are too far from the hologram location.');
-                            const arScene = document.getElementById('ar-scene');
-                            if (arScene) {
-                                document.body.removeChild(arScene); // Remove AR scene if too far
-                            }
-                        }
-                    },
-                    (error) => {
-                        // Handle geolocation errors...
-                        console.error('Error getting geolocation:', error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                alert('Geolocation is not supported by this browser.');
-            }
+            window.location.href = url; // Navigate to the AR view page with parameters
         }
-
-
-
-        // Example distance calculation function (Haversine Formula)
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of the Earth in kilometers
-            const dLat = degreesToRadians(lat2 - lat1);
-            const dLon = degreesToRadians(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(degreesToRadians(lat1)) * Math.cos(degreesToRadians(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c; // Distance in kilometers
-        }
-
-        function degreesToRadians(degrees) {
-            return degrees * (Math.PI / 180);
-        }
-
-
 
 
         

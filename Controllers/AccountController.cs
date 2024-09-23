@@ -239,6 +239,15 @@ namespace jwtlogin.Controllers
             });
         }
 
+
+        [HttpGet]
+        public IActionResult ARView(double latitude, double longitude, string hologramText)
+        {
+            ViewBag.Latitude = latitude;
+            ViewBag.Longitude = longitude;
+            ViewBag.HologramText = hologramText;
+            return View("ar-view"); // Make sure this matches your view's name
+        }
         // POST: AcceptFriendRequest
 
         [HttpPost]
