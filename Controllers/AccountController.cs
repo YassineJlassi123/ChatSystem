@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using System.Security.Policy;
+using System.Globalization;
 
 namespace jwtlogin.Controllers
 {
@@ -873,6 +874,9 @@ namespace jwtlogin.Controllers
                     JaimeCount = p.JaimeCount,
                     JadoreCount = p.JadoreCount,
                     CommentCount = p.CommentCount,
+                    HologramText=p.HologramText,
+                    Latitude=p.Latitude,
+                    Longitude=p.Longitude,
                     Comments = p.Comments.Select(c => new CommentDto
                     {
                         Id = c.Id,
@@ -880,7 +884,8 @@ namespace jwtlogin.Controllers
                         CreatedAt = c.CreatedAt,
                         Username = c.User.Username,
                         ProfileImageUrl = c.User.ProfileImageUrl
-                    }).ToList() // Fetch and map comments here
+                    }
+                    ).ToList() // Fetch and map comments here
                 }).ToList();
 
             var viewModel = new ProfileAndPostViewModel
@@ -941,6 +946,9 @@ namespace jwtlogin.Controllers
                     JaimeCount = p.JaimeCount,
                     JadoreCount = p.JadoreCount,
                     CommentCount = p.CommentCount,
+                    HologramText = p.HologramText,
+                    Latitude = p.Latitude,
+                    Longitude = p.Longitude,
                     Comments = p.Comments.Select(c => new CommentDto
                     {
                         Id = c.Id,
@@ -1018,21 +1026,68 @@ namespace jwtlogin.Controllers
                 return RedirectToAction("Login");
             }
 
-            // Check if either content or image is provided
-            if (string.IsNullOrWhiteSpace(model.Post.Content) &&
-                (model.Post.Image == null || model.Post.Image.Length == 0 || !model.Post.Image.ContentType.StartsWith("image/")))
+            // For nested models, like Post, do the same
+            double? latitude = null;
+            double? longitude = null;
+
+            if (!string.IsNullOrEmpty(model.Post.Latitude) &&
+                double.TryParse(model.Post.Latitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedLatitude))
             {
-                return Json(new
-                {
-                    success = false,
-                    message = "Please provide either content or a valid image."
-                });
+                latitude = parsedLatitude;
             }
 
-            string imageUrl = null;
+            if (!string.IsNullOrEmpty(model.Post.Longitude) &&
+                double.TryParse(model.Post.Longitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedLongitude))
+            {
+                longitude = parsedLongitude;
+            }
 
-            // Handle image upload if provided
-            if (model.Post.Image != null && model.Post.Image.Length > 0 && model.Post.Image.ContentType.StartsWith("image/"))
+            var postType = model.Post.Type;
+
+            // Validate content based on post type
+            if (postType == "text_image")
+            {
+                if (string.IsNullOrWhiteSpace(model.Post.Content) &&
+                    (model.Post.Image == null || model.Post.Image.Length == 0 || !model.Post.Image.ContentType.StartsWith("image/")))
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Please provide either content or a valid image."
+                    });
+                }
+            }
+            else if (postType == "ai_image")
+            {
+                // Ensure that an image prompt is provided
+                if (string.IsNullOrWhiteSpace(model.Post.ImagePrompt))
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Please provide an image prompt."
+                    });
+                }
+            }
+           
+
+            // Only try to parse latitude and longitude if the post type is "hologram"
+           else if (model.Post.Type == "hologram")
+            {
+                if (string.IsNullOrEmpty(model.Post.Latitude) ||
+                    string.IsNullOrEmpty(model.Post.Longitude)) { 
+                    // Return error message if not provided for hologram type
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Please provide valid latitude and longitude for hologram posts."
+                    });
+                }
+            }
+
+            // Handle image upload if provided for text_image
+            string imageUrl = null;
+            if (postType == "text_image" && model.Post.Image != null && model.Post.Image.Length > 0 && model.Post.Image.ContentType.StartsWith("image/"))
             {
                 var uploadParams = new ImageUploadParams
                 {
@@ -1057,14 +1112,65 @@ namespace jwtlogin.Controllers
                 }
             }
 
-            var currentUser = await _context.Users.SingleOrDefaultAsync(u => u.Username == User.Identity.Name);
+            // Handle image generation if a prompt is provided
+            if (postType == "ai_image" && !string.IsNullOrWhiteSpace(model.Post.ImagePrompt))
+            {
+                // URL-encode the prompt
+                var encodedPrompt = Uri.EscapeDataString(model.Post.ImagePrompt);
+                var url = $"https://image.pollinations.ai/prompt/{encodedPrompt}?model=flux-realism&width=800&height=600&nologo=true";
 
+                using (var httpClient = new HttpClient())
+                {
+                    var response = await httpClient.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var imageBytes = await response.Content.ReadAsByteArrayAsync();
+
+                        var uploadParams = new ImageUploadParams
+                        {
+                            File = new FileDescription("generated-image.jpg", new MemoryStream(imageBytes)),
+                            Folder = "posts",
+                            Transformation = new Transformation().Crop("fill").Gravity("face").Width(800).Height(600)
+                        };
+
+                        var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                        if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                        {
+                            imageUrl = uploadResult.SecureUrl.ToString();
+                        }
+                        else
+                        {
+                            return Json(new
+                            {
+                                success = false,
+                                message = "Error uploading generated image."
+                            });
+                        }
+                    }
+                    else
+                    {
+                        return Json(new
+                        {
+                            success = false,
+                            message = "Error generating image."
+                        });
+                    }
+                }
+            }
+
+            var currentUser = await _context.Users.SingleOrDefaultAsync(u => u.Username == User.Identity.Name);
+           
             var post = new Post
             {
                 Content = model.Post.Content, // Can be null or empty
                 ImageUrl = imageUrl, // Can be null if no image is provided
                 UserId = currentUser.Id,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                HologramText=model.Post.HologramText,
+                Latitude= latitude,
+                Longitude= longitude,
+
             };
 
             _context.Posts.Add(post);
@@ -1088,45 +1194,50 @@ namespace jwtlogin.Controllers
             });
         }
 
+
         [HttpPost]
         public async Task<IActionResult> Command([FromBody] VoiceCommandRequest request)
         {
-            // Prepare the prompt for Cohere
+            // Ensure the request contains text and a list of commands
+            if (request == null || string.IsNullOrWhiteSpace(request.Text) || request.Commands == null || request.Commands.Length == 0)
+            {
+                return BadRequest("Invalid request. Ensure both text input and commands are provided.");
+            }
+
+            // Prepare the prompt with the exact text you requested
             var prompt = $@"
-You are given a list of commands and a user input. Your task is to determine which command from the list best matches the user input, only if the input clearly aligns with the intent or structure of the command.
+I want you to analyze a user input that may contain errors, extra words, or incorrect syntax, and match it to a list of predefined commands. After identifying the closest command, you need to extract the relevant variables (like username or content) from the input and return the matched command with the correct structure.
 
-User Input: '{request.Text}'
-Commands List: {string.Join(", ", request.Commands)}
+Here is a list of possible commands:
 
-Instructions:
-1. Only return a command if the user input **clearly** relates to one of the commands and has a strong similarity in wording or intent. If the user input is vague, irrelevant, or inappropriate, return 'no'.
-2. Ignore irrelevant or inappropriate words (e.g., insults, casual conversation, random phrases like 'what are you doing', 'ok', 'fine'). These should not trigger a command match.
-3. For placeholders like <username> or <content>:
-   - Extract **only** meaningful values (e.g., a valid name for <username> or valid text for <content>). If the input does not provide a valid placeholder value, return 'placeholder value not found'.
-4. If no command is a close match based on the user's input, return 'no'. Do not attempt to match input that is inappropriate, offensive, or too far removed from any command.
+{string.Join("\n", request.Commands)}
 
-Your response must follow this format:
-1. **Command:** The exact command that best matches the user input, if any.
-2. **Extracted Placeholder Values:** The extracted placeholder value as plain text, or 'None' if there are no placeholders or if the user input is inappropriate or contains no valid placeholder.
+For example, if the input is: i want to send a message whats up today to morta, you should recognize it matches the send message (content) to (username) command and return: send message whats up today to morta.
 
-If no command is relevant, return 'no'.";
+Important notes:
+- You should ignore garbage words or errors in syntax.
+- Always return the command in its exact structure with extracted variables.
+- If no command matches the input, respond with no.
+- Do not add or modify anything outside the provided structure.
 
+User Input: '{request.Text}'";
 
-
-            // Get completion from Cohere
+            // Get completion from Cohere or any AI model service you are using
             var response = await _cohereService.GetChatResponseAsync(prompt);
 
             // Return the response directly
             return Ok(new { command = response.Trim() });
         }
+    
 
-        public class VoiceCommandRequest
+    // VoiceCommandRequest class definition
+    public class VoiceCommandRequest
     {
-        public string Text { get; set; }
-        public string[] Commands { get; set; }
+        public string Text { get; set; } // User's input string
+        public string[] Commands { get; set; } // List of possible commands
     }
 
-        public async Task<IActionResult> Accueil()
+    public async Task<IActionResult> Accueil()
         {
             if (!User.Identity.IsAuthenticated)
             {
@@ -1666,6 +1777,7 @@ If no command is relevant, return 'no'.";
             public List<PostViewModel> Posts { get; set; }
              public int TotalPosts { get; set; }
             public bool IsProfileOwner { get; set; }
+
         }
         public class PostViewModel
         {
@@ -1678,6 +1790,9 @@ If no command is relevant, return 'no'.";
             public int JadoreCount { get; set; } // Count of Jadore interactions
             public int CommentCount { get; set; } // Count of comments
             public List<CommentDto> Comments { get; set; }
+            public string? HologramText { get; set; } // New property for hologram text
+            public double? Latitude { get; set; } // Nullable for cases where it's not a hologram
+            public double? Longitude { get; set; } // Nullable for cases where it's not a hologram
         }
 
 
@@ -1689,6 +1804,14 @@ If no command is relevant, return 'no'.";
             public string Content { get; set; }
 
             public IFormFile Image { get; set; } // For the image upload
+            public string ImagePrompt { get; set; } // For image generation prompt
+
+            public string HologramText { get; set; } // New property for hologram text
+            public string Latitude { get; set; } // Nullable for cases where it's not a hologram
+            public string Longitude { get; set; } // Nullable for cases where it's not a hologram
+            public string Type { get; set; } // Type of post (e.g., "text_image", "hologram", etc.)
+
+
         }
         public class ConversationViewModel
         {

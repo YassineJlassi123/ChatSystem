@@ -25,4 +25,7 @@ public class Post
     public int JaimeCount => Interactions.Count(i => i.InteractionType == InteractionType.Jaime);
     public int JadoreCount => Interactions.Count(i => i.InteractionType == InteractionType.Jadore);
     public int CommentCount => Comments.Count;
+    public string? HologramText { get; set; } // New property for hologram text
+    public double? Latitude { get; set; } // Nullable for cases where it's not a hologram
+    public double? Longitude { get; set; } // Nullable for cases where it's not a hologram
 }

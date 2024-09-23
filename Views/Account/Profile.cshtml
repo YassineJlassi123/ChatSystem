@@ -63,32 +63,71 @@
 </div>
  @if (Model.IsProfileOwner)
             {
-<!-- Create Post Section -->
+    <!-- Create Post Section -->
     <div id="post-creation-section" class="bg-card p-4 rounded-lg shadow-md mb-4 max-w-lg mx-auto">
-    <h2 class="text-lg font-bold mb-2">Créer une publication</h2>
-    <form id="createPostForm" method="post" enctype="multipart/form-data">
-        <div class="flex items-center mb-4" >
+        <h2 class="text-lg font-bold mb-2">Créer une publication</h2>
+        <form id="createPostForm" method="post" enctype="multipart/form-data">
+            <div class="flex items-center mb-4">
                 <img class="w-12 h-12 rounded-full" src="@Model.User.ProfileImageUrl" alt="User Avatar" />
                 <div class="ml-3">
                     <span class="text-lg font-semibold">@Model.User.Username</span>
+                </div>
             </div>
-        </div>
 
-        <textarea name="Post.Content" class="w-full p-2 border border-border rounded-md focus:outline-none focus:ring focus:ring-ring"
-                  rows="3" placeholder="Que voulez-vous dire ?" required></textarea>
-        <span id="content-validation" class="text-red-500"></span>
+            <!-- Post Type Selector -->
+            <div class="mb-4">
+                <label for="postType">Type de publication:</label>
+                <select id="postType" name="Post.Type" class="w-full p-2 border border-border rounded-md">
+                    <option value="text_image">Texte/Image</option>
+                    <option value="ai_image">Générer Image par IA</option>
+                    <option value="hologram">Post Hologram</option>
+                </select>
+            </div>
 
-        <div class="flex items-center justify-between mt-4">
-            <label for="image-upload" class="flex items-center space-x-2 cursor-pointer">
-                <input type="file" id="image-upload" name="Post.Image" class="hidden" accept="image/*" onchange="previewImage()" />
-                <img style="width:100%" id="preview-image" src="~/images/static/gallery.png" alt="Uploaded Image" class="cursor-pointer rounded-md h-32 w-full h-32 object-cover" />
-            </label>
-            <span id="image-validation" class="text-red-500"></span>
-        </div>
+            <!-- Text Content -->
+            <div id="textContentSection">
+                <textarea name="Post.Content" id="postContent" class="w-full p-2 border border-border rounded-md focus:outline-none focus:ring focus:ring-ring"
+                          rows="3" placeholder="Que voulez-vous dire ?" required></textarea>
+                <span id="content-validation" class="text-red-500"></span>
+            </div>
 
-        <button type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md">Publier</button>
-    </form>
+            <!-- Image Upload for Text/Image Post -->
+            <div id="imageUploadSection" class="flex items-center justify-between mt-4">
+                <label for="image-upload" class="flex items-center space-x-2 cursor-pointer">
+                    <input type="file" id="image-upload" name="Post.Image" class="hidden" accept="image/*" onchange="previewImage()" />
+                    <img id="preview-image" src="~/images/static/gallery.png" alt="Uploaded Image" class="cursor-pointer rounded-md h-32 w-full object-cover" />
+                </label>
+                <span id="image-validation" class="text-red-500"></span>
+            </div>
+
+            <!-- AI Image Prompt for AI Post -->
+            <div id="aiImagePromptSection" class="hidden">
+                <label for="ImagePrompt">Décrire l'image à générer (Prompt IA):</label>
+                <input type="text" id="ImagePrompt" name="Post.ImagePrompt" placeholder="Décrire l'image à générer"
+                       class="w-full p-2 border border-border rounded-md">
+            </div>
+
+            <!-- Hologram Post Section (3D Text and Map Location) -->
+            <div id="hologramSection" class="hidden">
+                <div class="mb-4">
+                    <label for="hologramText">Texte Hologramme (3D):</label>
+                    <input type="text" id="hologramText" name="Post.HologramText" placeholder="Texte Hologramme"
+                           class="w-full p-2 border border-border rounded-md">
+                </div>
+                <div class="w-full h-64 md:h-96">
+                    <div id="map" class="w-full h-full"></div> <!-- Full width and height of the container -->
+                </div>
+                <input type="hidden" id="Latitude" name="Post.Latitude">
+                <input type="hidden" id="Longitude" name="Post.Longitude">
+                <div id="threejs-container" class="w-full h-64 md:h-96 mt-4 bg-gray-100 rounded-lg"></div>
+
+            </div>
+
+            <button type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md">Publier</button>
+        </form>
     </div>
+
+
 }
 <!-- Posts Section -->
 <div id="post-container" class="max-w-lg mx-auto bg-card rounded-lg shadow-md p-4 mt-6">
@@ -111,16 +150,32 @@
                         <p class="text-muted-foreground text-sm" data-date="@post.CreatedAt.ToString("o")"></p>
                     </div>
                 </div>
-                <p id="post-content-@post.Id" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="@post.Content">
-                    @post.Content
-                </p>
-                <a href="javascript:void(0)" class="text-primary show-more-link" id="show-more-@post.Id" onclick="togglePostContent(@post.Id)" style="display:none;">Show more</a>
 
+                @if (!string.IsNullOrEmpty(post.Content))
+                {
+                    <p id="post-content-@post.Id" class="text-primary-foreground text-sm mb-2 max-w-[400px] break-words whitespace-normal" data-full-content="@post.Content">
+                        @post.Content
+                    </p>
+                }
 
                 @if (!string.IsNullOrEmpty(post.ImageUrl))
                 {
                     <img style="width:100%" class="rounded-lg mb-4" src="@post.ImageUrl" alt="Post Image" />
                 }
+
+                <!-- Hologram Button -->
+                @if (!string.IsNullOrEmpty(post.HologramText))
+                {
+                    <div class="mt-4">
+                        <button class="bg-green-500 text-white p-2 rounded hover:bg-green-600"
+                                onclick="openARView(@post.Latitude?.ToString("F10", System.Globalization.CultureInfo.InvariantCulture), @post.Longitude?.ToString("F10", System.Globalization.CultureInfo.InvariantCulture), '@post.HologramText')">
+                            View Hologram
+                        </button>
+
+                        
+                    </div>
+                }
+
                 <div class="flex justify-between">
                     <div class="flex items-center">
                         <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="likePost(@post.Id)">
@@ -137,13 +192,11 @@
                         </a>
                     </div>
                 </div>
+
                 <!-- New Comment Input Design -->
                 <div class="mt-4">
                     <div class="relative mt-2">
-
                         <textarea id="comment-input-@post.Id" class="border border-border rounded-lg p-2 w-full pl-10 resize-none overflow-hidden" placeholder="Write a comment..." rows="1"></textarea>
-
-
                         <button class="absolute top-2 right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/80" onclick="addComment(@post.Id)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -151,8 +204,8 @@
                         </button>
                     </div>
                 </div>
-                <div class="comments-section mt-4">
-                    </div>
+
+                <div class="comments-section mt-4"></div>
             </div>
         }
     }
@@ -166,8 +219,276 @@
     <p>Loading more posts...</p>
 </div>
 
+
+<button id="close" style="display:none" onclick="closeARView()">Close AR View</button>
+
+
 @section Scripts {
     <script>
+        function closeARView() {
+            document.getElementById('ar-scene').style.display = 'none';
+        }
+        var map = L.map('map').setView([33.0, 10.0], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 30,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        var marker;
+        map.on('click', function (e) {
+            if (marker) {
+                map.removeLayer(marker);
+            }
+            marker = L.marker(e.latlng).addTo(map);
+            document.getElementById("Latitude").value = e.latlng.lat;
+            document.getElementById("Longitude").value = e.latlng.lng;
+            
+        });
+        let scene, camera, renderer, textMesh;
+        const threejsContainer = document.getElementById('threejs-container');
+
+        // Handle post type change
+        document.getElementById('postType').addEventListener('change', function () {
+            const postType = this.value;
+
+            document.getElementById('textContentSection').classList.toggle('hidden', postType !== 'text_image');
+            document.getElementById('imageUploadSection').classList.toggle('hidden', postType !== 'text_image');
+            document.getElementById('aiImagePromptSection').classList.toggle('hidden', postType !== 'ai_image');
+            document.getElementById('hologramSection').classList.toggle('hidden', postType !== 'hologram');
+
+            if (postType === 'hologram') {
+                initThreeJS();
+            }
+        });
+
+        const hologramTextInput = document.getElementById('hologramText');
+
+        hologramTextInput.addEventListener('input', (event) => {
+            const text = event.target.value;
+            updateTextMesh(text);
+        });
+
+        // Initialize Three.js
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, threejsContainer.clientWidth / threejsContainer.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(threejsContainer.clientWidth, threejsContainer.clientHeight);
+            threejsContainer.appendChild(renderer.domElement);
+
+            const light = new THREE.AmbientLight(0xffffff);
+            scene.add(light);
+
+            camera.position.z = 5;
+
+            updateTextMesh(hologramTextInput.value || "Default Text");
+            animate();
+        }
+
+        // Create or update text mesh
+        function updateTextMesh(text) {
+            if (textMesh) {
+                scene.remove(textMesh);
+            }
+
+            const loader = new THREE.FontLoader();
+            loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+                const geometry = new THREE.TextGeometry(text, {
+                    font: font,
+                    size: 1,
+                    height: 0.1,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.1,
+                    bevelSize: 0.05,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
+
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                textMesh = new THREE.Mesh(geometry, material);
+                scene.add(textMesh);
+            });
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (textMesh) {
+                // Simple rotation animation for the text
+                textMesh.rotation.y += 0.01; // Rotate around the Y-axis
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = threejsContainer.clientWidth / threejsContainer.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(threejsContainer.clientWidth, threejsContainer.clientHeight);
+            }
+        });
+        // Add mouse and touch interaction
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        // Mouse events
+        threejsContainer.addEventListener('mousedown', (event) => {
+            isDragging = true;
+        });
+
+        threejsContainer.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        threejsContainer.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                camera.rotation.y -= deltaMove.x * 0.005;
+                camera.rotation.x -= deltaMove.y * 0.005;
+            }
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+
+        // Touch events for mobile
+        threejsContainer.addEventListener('touchstart', (event) => {
+            isDragging = true;
+            previousMousePosition = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY
+            };
+        });
+
+        threejsContainer.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        threejsContainer.addEventListener('touchmove', (event) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.touches[0].clientX - previousMousePosition.x,
+                    y: event.touches[0].clientY - previousMousePosition.y
+                };
+
+                camera.rotation.y -= deltaMove.x * 0.005;
+                camera.rotation.x -= deltaMove.y * 0.005;
+            }
+            previousMousePosition = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY
+            };
+        });
+
+        function openARView(latitude, longitude, hologramText) {
+            console.log(`Opening AR view for hologram: ${hologramText} at (${latitude}, ${longitude})`);
+
+            // Remove existing AR scene if present
+            const existingScene = document.getElementById('ar-scene');
+            if (existingScene) {
+                document.body.removeChild(existingScene);
+            }
+
+            // Create AR scene
+            const arScene = document.createElement('div');
+            arScene.id = 'ar-scene';
+            arScene.style.position = 'fixed';
+            arScene.style.top = '0';
+            arScene.style.left = '0';
+            arScene.style.width = '100%';
+            arScene.style.height = '100%';
+            arScene.style.zIndex = '9999';
+            arScene.innerHTML = `
+                <a-scene embedded arjs='sourceType: webcam;'>
+                    <a-text id="ar-text" value="${hologramText}" position="0 0 0" scale="5 5 5" color="white"></a-text>
+                    <a-entity camera look-controls position="0 0 0"></a-entity>
+                </a-scene>
+            `;
+
+            document.body.appendChild(arScene); // Inject the AR scene into the body
+
+            // Request geolocation permission
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    // Success callback
+                    (position) => {
+                        const userLatitude = position.coords.latitude;
+                        const userLongitude = position.coords.longitude;
+
+                        console.log(`User Latitude: ${userLatitude}`);
+                        console.log(`Hologram Latitude: ${latitude}`);
+                        console.log(`User Longitude: ${userLongitude}`);
+                        console.log(`Hologram Longitude: ${longitude}`);
+
+                        const distance = calculateDistance(userLatitude, userLongitude, latitude, longitude);
+                        console.log(`Distance to hologram: ${distance} km`);
+
+                        if (distance <= 2) {
+                            console.log('You are close enough to see the hologram.');
+                            // Keep the AR scene active
+                        } else {
+                            alert('You are too far from the hologram location.');
+                            if (arScene) {
+                                document.body.removeChild(arScene); // Remove AR scene if too far
+                            }
+                        }
+                    },
+                    // Error callback
+                    (error) => {
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                alert("User denied the request for Geolocation.");
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                alert("Location information is unavailable.");
+                                break;
+                            case error.TIMEOUT:
+                                alert("The request to get user location timed out.");
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                alert("An unknown error occurred.");
+                                break;
+                        }
+                    },
+                    // Options for accuracy
+                    {
+                        enableHighAccuracy: true,  // Use GPS-level accuracy
+                        timeout: 10000,            // Set timeout to 10 seconds
+                        maximumAge: 0              // No cached location
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        }
+
+        // Example distance calculation function (Haversine Formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = degreesToRadians(lat2 - lat1);
+            const dLon = degreesToRadians(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(degreesToRadians(lat1)) * Math.cos(degreesToRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in kilometers
+        }
+
+        function degreesToRadians(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+
+
+
+        
 
         window.onload = function () {
 
@@ -529,30 +850,49 @@
             document.getElementById('submitPost').addEventListener('click', async () => {
                 const form = document.getElementById('createPostForm');
                 const formData = new FormData(form);
-
-                // Get the image file input and file
-                const imageFileInput = document.getElementById('image-upload');
-                const imageFile = imageFileInput.files[0];
-                const imageValidation = document.getElementById('image-validation');
-
-                // Clear previous validation messages
-                document.getElementById('content-validation').innerText = '';
-                imageValidation.innerText = '';
-
+                const postType = formData.get('Post.Type');
                 const content = formData.get('Post.Content').trim();
+                const imagePrompt = formData.get('Post.ImagePrompt').trim();
+                const hologramText = formData.get('Post.HologramText').trim();
+                const latitude = formData.get('Post.Latitude'); // Convert to float
+                const longitude = formData.get('Post.Longitude'); // Convert to float
 
-                // Validate content and image
-                if (!content && !imageFile) {
-                    document.getElementById('content-validation').innerText = 'Please provide either content or an image.';
+                document.getElementById('content-validation').innerText = '';
+
+                // Check if there's content for the post
+                if (!content && !imagePrompt && !hologramText) {
+                    document.getElementById('content-validation').innerText = 'Veuillez fournir du contenu ou une image.';
                     return;
                 }
 
-                // Optionally validate image type if an image is provided
-                if (imageFile && imageFile.type && !imageFile.type.startsWith('image/')) {
-                    imageValidation.innerText = 'Only image files are allowed.';
-                    return;
+                // Additional validation for post types
+                if (postType === 'text_image') {
+                    const imageFile = document.getElementById('image-upload').files[0];
+                    if (!imageFile || !content) {
+                        document.getElementById('content-validation').innerText = 'Veuillez fournir une image ou du contenu.';
+                        return;
+                    }
+                } else if (postType === 'ai_image') {
+                    // Ensure that the image prompt is filled for AI-generated images
+                    if (!imagePrompt) {
+                        document.getElementById('content-validation').innerText = 'Veuillez fournir une description pour générer l\'image.';
+                        return;
+                    }
+                } else if (postType === 'hologram') {
+                    // Ensure hologram text is provided
+                    if (!hologramText) {
+                        document.getElementById('content-validation').innerText = 'Veuillez fournir du texte pour l\'hologramme.';
+                        return;
+                    }
+                    // Ensure location is selected for hologram posts
+                    if (isNaN(latitude) || isNaN(longitude)) {
+                        document.getElementById('content-validation').innerText = 'Veuillez sélectionner un emplacement sur la carte.';
+                        return;
+                    }
                 }
-
+                formData.forEach((value, key) => {
+                    console.log(key, value);
+                });
                 try {
                     const response = await fetch('/account/CreatePost', {
                         method: 'POST',
@@ -560,18 +900,15 @@
                     });
 
                     const result = await response.json();
-
                     if (result.success) {
                         form.reset(); // Clear form
-                        document.getElementById('preview-image').src = '/images/static/gallery.png'; // Clear preview image
-                        appendnewPosts(result.post); // Add the new post to the top of the list
+                        appendnewPosts(result.post); // Add new post to the feed
                     } else {
-                        console.error('Error creating post:', result.message); // Display backend error message
                         document.getElementById('content-validation').innerText = result.message;
                     }
                 } catch (error) {
                     console.error('Error creating post:', error);
-                    document.getElementById('content-validation').innerText = 'An error occurred while creating the post. Please try again.';
+                    document.getElementById('content-validation').innerText = 'Une erreur est survenue lors de la création du post.';
                 }
             });
 
@@ -590,6 +927,7 @@
                     preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
                 }
             }
+
 
             window.triggerProfileImageUpload = triggerProfileImageUpload;
             window.triggerCoverImageUpload = triggerCoverImageUpload;
