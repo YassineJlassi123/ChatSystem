@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("jwtlogin")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+407b9b396e77d2f167446af0d16fcfd1da6725e7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae9f3d220bb418bed7b506531c5ee4215125722c")]
 [assembly: System.Reflection.AssemblyProductAttribute("jwtlogin")]
 [assembly: System.Reflection.AssemblyTitleAttribute("jwtlogin")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

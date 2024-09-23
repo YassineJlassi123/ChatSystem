@@ -385,7 +385,6 @@
                 y: event.touches[0].clientY
             };
         });
-
         function openARView(latitude, longitude, hologramText) {
             console.log(`Opening AR view for hologram: ${hologramText} at (${latitude}, ${longitude})`);
 
@@ -395,78 +394,90 @@
                 document.body.removeChild(existingScene);
             }
 
-            // Create AR scene
-            const arScene = document.createElement('div');
-            arScene.id = 'ar-scene';
-            arScene.style.position = 'fixed';
-            arScene.style.top = '0';
-            arScene.style.left = '0';
-            arScene.style.width = '100%';
-            arScene.style.height = '100%';
-            arScene.style.zIndex = '9999';
-            arScene.innerHTML = `
-                <a-scene embedded arjs='sourceType: webcam;'>
-                    <a-text id="ar-text" value="${hologramText}" position="0 0 0" scale="5 5 5" color="white"></a-text>
-                    <a-entity camera look-controls position="0 0 0"></a-entity>
-                </a-scene>
-            `;
+            // Check if WebXR is supported
+            if (navigator.xr) {
+                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                    if (supported) {
+                        // Create video element to test camera access
+                        const video = document.createElement('video');
+                        video.setAttribute('autoplay', 'true');
+                        video.setAttribute('playsinline', 'true'); // Important for iOS
+                        document.body.appendChild(video);
 
-            document.body.appendChild(arScene); // Inject the AR scene into the body
+                        // Request camera access
+                        navigator.mediaDevices.getUserMedia({ video: true })
+                            .then(stream => {
+                                video.srcObject = stream;
+                                video.play();
+
+                                // Create AR scene after successfully accessing the camera
+                                const arScene = document.createElement('div');
+                                arScene.id = 'ar-scene';
+                                arScene.style.position = 'fixed';
+                                arScene.style.top = '0';
+                                arScene.style.left = '0';
+                                arScene.style.width = '100%';
+                                arScene.style.height = '100%';
+                                arScene.style.zIndex = '9999';
+                                arScene.innerHTML = `
+                                    <a-scene embedded arjs='sourceType: webcam;'>
+                                        <a-text id="ar-text" value="${hologramText}" position="0 0 0" scale="5 5 5" color="white"></a-text>
+                                        <a-entity camera look-controls position="0 0 0"></a-entity>
+                                    </a-scene>
+                                `;
+
+                                document.body.appendChild(arScene); // Inject the AR scene into the body
+                            })
+                            .catch(error => {
+                                console.error('Error accessing the camera: ', error);
+                                alert('Could not access the camera. Check permissions.');
+                            });
+                    } else {
+                        console.log('Immersive VR is not supported on this device.');
+                        alert('Immersive VR is not supported on your device.');
+                    }
+                }).catch((error) => {
+                    console.error('Error checking session support:', error);
+                });
+            } else {
+                console.error('WebXR is not supported in this browser.');
+                alert('WebXR is not supported in this browser.');
+            }
 
             // Request geolocation permission
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    // Success callback
                     (position) => {
                         const userLatitude = position.coords.latitude;
                         const userLongitude = position.coords.longitude;
 
-                        console.log(`User Latitude: ${userLatitude}`);
-                        console.log(`Hologram Latitude: ${latitude}`);
-                        console.log(`User Longitude: ${userLongitude}`);
-                        console.log(`Hologram Longitude: ${longitude}`);
-
                         const distance = calculateDistance(userLatitude, userLongitude, latitude, longitude);
-                        console.log(`Distance to hologram: ${distance} km`);
-
                         if (distance <= 2) {
                             console.log('You are close enough to see the hologram.');
-                            // Keep the AR scene active
                         } else {
                             alert('You are too far from the hologram location.');
+                            const arScene = document.getElementById('ar-scene');
                             if (arScene) {
                                 document.body.removeChild(arScene); // Remove AR scene if too far
                             }
                         }
                     },
-                    // Error callback
                     (error) => {
-                        switch (error.code) {
-                            case error.PERMISSION_DENIED:
-                                alert("User denied the request for Geolocation.");
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                alert("Location information is unavailable.");
-                                break;
-                            case error.TIMEOUT:
-                                alert("The request to get user location timed out.");
-                                break;
-                            case error.UNKNOWN_ERROR:
-                                alert("An unknown error occurred.");
-                                break;
-                        }
+                        // Handle geolocation errors...
+                        console.error('Error getting geolocation:', error);
                     },
-                    // Options for accuracy
                     {
-                        enableHighAccuracy: true,  // Use GPS-level accuracy
-                        timeout: 10000,            // Set timeout to 10 seconds
-                        maximumAge: 0              // No cached location
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
                     }
                 );
             } else {
                 alert('Geolocation is not supported by this browser.');
             }
         }
+
+
 
         // Example distance calculation function (Haversine Formula)
         function calculateDistance(lat1, lon1, lat2, lon2) {
