@@ -1,6 +1,8 @@
-﻿<div id="cont1">
+﻿<button class="fixed top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 focus:outline-none" id="enter-fullscreen">
+    Start AR
+</button>
 
-</div>
+@section Scripts {
     <script>
         // Function to go back to the main page
         function goBack() {
@@ -9,12 +11,12 @@
 
         // Get parameters from the URL
         const urlParams = new URLSearchParams(window.location.search);
-        const latitude = parseFloat(urlParams.get('latitude'));
-        const longitude = parseFloat(urlParams.get('longitude'));
+        const targetLatitude = parseFloat(urlParams.get('latitude'));
+        const targetLongitude = parseFloat(urlParams.get('longitude'));
         const hologramText = urlParams.get('hologramText');
 
         // Check if parameters are valid
-        if (!latitude || !longitude || !hologramText) {
+        if (!targetLatitude || !targetLongitude || !hologramText) {
             alert('Invalid parameters');
             window.location.href = 'index.html'; // Redirect if parameters are missing
         } else {
@@ -24,26 +26,44 @@
                     (position) => {
                         const userLatitude = position.coords.latitude;
                         const userLongitude = position.coords.longitude;
-                        const distance = calculateDistance(userLatitude, userLongitude, latitude, longitude);
+                        const distance = calculateDistance(userLatitude, userLongitude, targetLatitude, targetLongitude);
 
                         if (distance <= 2) { // Check if within 2 km
                             console.log('You are close enough to see the hologram.');
 
-                            // Create AR scene
+                            // Create AR scene element but keep it hidden initially
                             const arScene = document.createElement('div');
-                      
-                            arScene.classList.add('fixed', 'top-0', 'left-0', 'w-full', 'h-full', 'z-50'); // Use Tailwind classes
+                            arScene.style.display = 'none'; // Hide the AR scene initially
+                            const position3D = get3DPosition(userLatitude, userLongitude, targetLatitude, targetLongitude);
 
                             arScene.innerHTML = `
-                                            <a-scene embedded arjs='sourceType: webcam;' class="w-full h-full">
+                                        <a-scene embedded arjs="sourceType: webcam; sourceWidth: 640; sourceHeight: 480;">
                                             <a-marker preset='hiro'>
-                                                <a-text value="${hologramText}" position='0 50 -10' scale='20 20 20' color='white'></a-text>
+                                                <a-text value="${hologramText}" position="${position3D.x} ${position3D.y} ${position3D.z}" scale='40 40 40' color='white'></a-text>
                                             </a-marker>
                                             <a-entity camera></a-entity>
                                         </a-scene>
                                     `;
-                        const myDiv = document.getElementById('cont1');
-                        myDiv.appendChild(arScene);
+
+                            // Event listener for the button to show the AR scene
+                            document.getElementById('enter-fullscreen').addEventListener('click', () => {
+                                // Show the AR scene
+                                document.body.appendChild(arScene);
+                                arScene.style.display = 'block'; // Show the AR scene
+
+                                // Attempt to enter fullscreen
+                                const videoElement = document.getElementById('arjs-video');
+                                if (videoElement) {
+                                    if (videoElement.requestFullscreen) {
+                                        videoElement.requestFullscreen().catch(err => {
+                                            console.error("Failed to enter fullscreen:", err);
+                                            alert("You need to click the button to enter fullscreen.");
+                                        });
+                                    } else if (videoElement.webkitRequestFullscreen) { // Safari
+                                        videoElement.webkitRequestFullscreen();
+                                    }
+                                }
+                            });
                         } else {
                             alert('You are too far from the hologram location.');
                         }
@@ -75,5 +95,23 @@
             const distance = R * c; // Distance in km
             return distance;
         }
-    </script>
 
+        // Function to convert geographic coordinates to 3D coordinates
+        function get3DPosition(userLat, userLon, targetLat, targetLon) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (targetLat - userLat) * (Math.PI / 180);
+            const dLon = (targetLon - userLon) * (Math.PI / 180);
+
+            // Calculate offsets in meters
+            const x = R * Math.cos(userLat * (Math.PI / 180)) * dLon * 1000; // Convert km to meters
+            const z = R * dLat * 1000; // Convert km to meters
+
+            // Adjust y as needed, setting it higher for better visibility
+            return {
+                x: x,
+                y: 20, // Adjust height as needed
+                z: -z // Use negative z for depth in A-Frame
+            };
+        }
+    </script>
+}
