@@ -37,15 +37,17 @@
                             const position3D = get3DPosition(userLatitude, userLongitude, targetLatitude, targetLongitude);
                             console.log(hologramText);
                             arScene.innerHTML = `
-                                                         <a-scene embedded arjs="sourceType: webcam; sourceWidth: 640; sourceHeight: 480;" style="background-color: black;">
-                <a-entity position="${position3D.x} ${position3D.y} ${position3D.z}">
-                    <a-text value="${hologramText}" scale="100 100 100" color="red" side="double"
-                            look-at="#camera" position="0 0 0"
-                            material="shader: flat; opacity: 0.9; transparent: true;">
-                    </a-text>
-                </a-entity>
-                <a-entity camera id="camera"></a-entity>
-            </a-scene>
+                                                                 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" style="background-color: black;">
+            <a-entity
+                position="0 0 -1"
+                text="value: This is AR Text; color: red; align: center;"
+                scale="2 2 2"
+                material="shader: flat; opacity: 0.9; transparent: true;"
+                look-at="#camera">
+            </a-entity>
+            <a-entity camera id="camera"></a-entity>
+        </a-scene>
+
                                     `;
 
                             // Event listener for the button to show the AR scene
