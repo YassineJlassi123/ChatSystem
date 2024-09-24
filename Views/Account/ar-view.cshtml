@@ -1,122 +1,71 @@
-﻿<button class="fixed top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 focus:outline-none" id="enter-fullscreen">
-    Start AR
-</button>
+﻿
 
-@section Scripts {
+    <button id="start-ar" style="position: absolute; z-index: 1;">Start AR Experience</button>
     <script>
-        // Function to go back to the main page
-        function goBack() {
-            window.history.back(); // Navigate back to the previous page
+        let scene, camera, renderer, textMesh;
+
+        // Initialize Three.js
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
         }
 
-        // Get parameters from the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetLatitude = parseFloat(urlParams.get('latitude'));
-        const targetLongitude = parseFloat(urlParams.get('longitude'));
-        const hologramText = urlParams.get('hologramText');
+        // Create 3D text
+        function create3DText() {
+            const loader = new THREE.FontLoader();
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                const geometry = new THREE.TextGeometry('Hello', {
+                    font: font,
+                    size: 1,
+                    height: 0.1,
+                    bevelEnabled: true,
+                    bevelThickness: 0.03,
+                    bevelSize: 0.05,
+                    bevelSegments: 2
+                });
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                textMesh = new THREE.Mesh(geometry, material);
+                textMesh.position.set(-1, 0, -3);
+                scene.add(textMesh);
+            });
+        }
 
-        // Check if parameters are valid
-        if (!targetLatitude || !targetLongitude || !hologramText) {
-            alert('Invalid parameters');
-            window.location.href = 'index.html'; // Redirect if parameters are missing
-        } else {
-            // Check if geolocation is supported
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userLatitude = position.coords.latitude;
-                        const userLongitude = position.coords.longitude;
-                        const distance = calculateDistance(userLatitude, userLongitude, targetLatitude, targetLongitude);
-
-                        if (distance <= 2) { // Check if within 2 km
-                            console.log('You are close enough to see the hologram.');
-
-                            // Create AR scene element but keep it hidden initially
-                            const arScene = document.createElement('div');
-                            arScene.style.display = 'none'; // Hide the AR scene initially
-                            const position3D = get3DPosition(userLatitude, userLongitude, targetLatitude, targetLongitude);
-                            console.log(hologramText);
-                            arScene.innerHTML = `
-                                                                 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" style="background-color: black;">
-            <a-entity
-                position="0 0 -1"
-                text="value: This is AR Text; color: red; align: center;"
-                scale="2 2 2"
-                material="shader: flat; opacity: 0.9; transparent: true;"
-                look-at="#camera">
-            </a-entity>
-            <a-entity camera id="camera"></a-entity>
-        </a-scene>
-
-                                    `;
-
-                            // Event listener for the button to show the AR scene
-                            document.getElementById('enter-fullscreen').addEventListener('click', () => {
-                                // Show the AR scene
-                                document.body.appendChild(arScene);
-                                arScene.style.display = 'block'; // Show the AR scene
-
-                                // Attempt to enter fullscreen
-                                const videoElement = document.getElementById('arjs-video');
-                                if (videoElement) {
-                                    if (videoElement.requestFullscreen) {
-                                        videoElement.requestFullscreen().catch(err => {
-                                            console.error("Failed to enter fullscreen:", err);
-                                            alert("You need to click the button to enter fullscreen.");
-                                        });
-                                    } else if (videoElement.webkitRequestFullscreen) { // Safari
-                                        videoElement.webkitRequestFullscreen();
-                                    }
-                                }
-                            });
-                        } else {
-                            alert('You are too far from the hologram location.');
-                        }
-                    },
-                    (error) => {
-                        console.error('Error getting geolocation:', error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                alert('Geolocation is not supported by this browser.');
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            if (textMesh) {
+                textMesh.rotation.y += 0.01;  // Rotate the text
             }
+            renderer.render(scene, camera);
         }
 
-        // Helper function to calculate distance between two coordinates
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of the Earth in km
-            const dLat = (lat2 - lat1) * (Math.PI / 180);
-            const dLon = (lon2 - lon1) * (Math.PI / 180);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c; // Distance in km
-            return distance;
+        // Start AR experience
+        function startAR() {
+            navigator.xr.requestSession('immersive-ar').then(onSessionStarted);
         }
 
-        // Function to convert geographic coordinates to 3D coordinates
-        function get3DPosition(userLat, userLon, targetLat, targetLon) {
-            const R = 6371; // Earth's radius in km
-            const dLat = (targetLat - userLat) * (Math.PI / 180);
-            const dLon = (targetLon - userLon) * (Math.PI / 180);
+        // On AR session started
+        function onSessionStarted(session) {
+            session.addEventListener('end', onSessionEnded);
+            // Add the renderer's context to the session
+            renderer.xr.enabled = true;
+            renderer.xr.setSession(session);
 
-            // Calculate offsets in meters
-            const x = R * Math.cos(userLat * (Math.PI / 180)) * dLon * 1000; // Convert km to meters
-            const z = R * dLat * 1000; // Convert km to meters
-
-            // Adjust y as needed, setting it higher for better visibility
-            return {
-                x: x,
-                y: 50, // Adjust height as needed
-                z: -z // Use negative z for depth in A-Frame
-            };
+            create3DText();
+            animate();
         }
+
+        // On AR session ended
+        function onSessionEnded() {
+            renderer.xr.enabled = false;
+            document.body.removeChild(renderer.domElement);
+            init();  // Reinitialize for next AR session
+        }
+
+        document.getElementById('start-ar').addEventListener('click', startAR);
+        init();
     </script>
-}
+
