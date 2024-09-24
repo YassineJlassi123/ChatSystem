@@ -244,8 +244,7 @@
             document.getElementById("Longitude").value = e.latlng.lng;
             
         });
-        let scene, camera, renderer, textMesh;
-        const threejsContainer = document.getElementById('threejs-container');
+      
 
         // Handle post type change
         document.getElementById('postType').addEventListener('change', function () {
@@ -256,135 +255,11 @@
             document.getElementById('aiImagePromptSection').classList.toggle('hidden', postType !== 'ai_image');
             document.getElementById('hologramSection').classList.toggle('hidden', postType !== 'hologram');
 
-            if (postType === 'hologram') {
-                initThreeJS();
-            }
+            
         });
 
-        const hologramTextInput = document.getElementById('hologramText');
 
-        hologramTextInput.addEventListener('input', (event) => {
-            const text = event.target.value;
-            updateTextMesh(text);
-        });
-
-        // Initialize Three.js
-        function initThreeJS() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, threejsContainer.clientWidth / threejsContainer.clientHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer();
-            renderer.setSize(threejsContainer.clientWidth, threejsContainer.clientHeight);
-            threejsContainer.appendChild(renderer.domElement);
-
-            const light = new THREE.AmbientLight(0xffffff);
-            scene.add(light);
-
-            camera.position.z = 5;
-
-            updateTextMesh(hologramTextInput.value || "Default Text");
-            animate();
-        }
-
-        // Create or update text mesh
-        function updateTextMesh(text) {
-            if (textMesh) {
-                scene.remove(textMesh);
-            }
-
-            const loader = new THREE.FontLoader();
-            loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/fonts/helvetiker_regular.typeface.json', (font) => {
-                const geometry = new THREE.TextGeometry(text, {
-                    font: font,
-                    size: 1,
-                    height: 0.1,
-                    curveSegments: 12,
-                    bevelEnabled: true,
-                    bevelThickness: 0.1,
-                    bevelSize: 0.05,
-                    bevelOffset: 0,
-                    bevelSegments: 5
-                });
-
-                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                textMesh = new THREE.Mesh(geometry, material);
-                scene.add(textMesh);
-            });
-        }
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (textMesh) {
-                // Simple rotation animation for the text
-                textMesh.rotation.y += 0.01; // Rotate around the Y-axis
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = threejsContainer.clientWidth / threejsContainer.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(threejsContainer.clientWidth, threejsContainer.clientHeight);
-            }
-        });
-        // Add mouse and touch interaction
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-
-        // Mouse events
-        threejsContainer.addEventListener('mousedown', (event) => {
-            isDragging = true;
-        });
-
-        threejsContainer.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        threejsContainer.addEventListener('mousemove', (event) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: event.clientX - previousMousePosition.x,
-                    y: event.clientY - previousMousePosition.y
-                };
-
-                camera.rotation.y -= deltaMove.x * 0.005;
-                camera.rotation.x -= deltaMove.y * 0.005;
-            }
-            previousMousePosition = { x: event.clientX, y: event.clientY };
-        });
-
-        // Touch events for mobile
-        threejsContainer.addEventListener('touchstart', (event) => {
-            isDragging = true;
-            previousMousePosition = {
-                x: event.touches[0].clientX,
-                y: event.touches[0].clientY
-            };
-        });
-
-        threejsContainer.addEventListener('touchend', () => {
-            isDragging = false;
-        });
-
-        threejsContainer.addEventListener('touchmove', (event) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: event.touches[0].clientX - previousMousePosition.x,
-                    y: event.touches[0].clientY - previousMousePosition.y
-                };
-
-                camera.rotation.y -= deltaMove.x * 0.005;
-                camera.rotation.x -= deltaMove.y * 0.005;
-            }
-            previousMousePosition = {
-                x: event.touches[0].clientX,
-                y: event.touches[0].clientY
-            };
-        });
+       
 
 
 

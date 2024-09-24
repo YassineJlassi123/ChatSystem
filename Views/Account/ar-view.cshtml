@@ -1,71 +1,15 @@
 ﻿
+    <button id="start-ar">Start AR Experience</button>
 
-    <button id="start-ar" style="position: absolute; z-index: 1;">Start AR Experience</button>
+    <a-scene embedded arjs>
+        <a-entity text="value: Hello; color: green;" position="0 0 -2"></a-entity>
+    </a-scene>
+
     <script>
-        let scene, camera, renderer, textMesh;
-
-        // Initialize Three.js
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-        }
-
-        // Create 3D text
-        function create3DText() {
-            const loader = new THREE.FontLoader();
-            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                const geometry = new THREE.TextGeometry('Hello', {
-                    font: font,
-                    size: 1,
-                    height: 0.1,
-                    bevelEnabled: true,
-                    bevelThickness: 0.03,
-                    bevelSize: 0.05,
-                    bevelSegments: 2
-                });
-                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-                textMesh = new THREE.Mesh(geometry, material);
-                textMesh.position.set(-1, 0, -3);
-                scene.add(textMesh);
-            });
-        }
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            if (textMesh) {
-                textMesh.rotation.y += 0.01;  // Rotate the text
-            }
-            renderer.render(scene, camera);
-        }
-
-        // Start AR experience
-        function startAR() {
-            navigator.xr.requestSession('immersive-ar').then(onSessionStarted);
-        }
-
-        // On AR session started
-        function onSessionStarted(session) {
-            session.addEventListener('end', onSessionEnded);
-            // Add the renderer's context to the session
-            renderer.xr.enabled = true;
-            renderer.xr.setSession(session);
-
-            create3DText();
-            animate();
-        }
-
-        // On AR session ended
-        function onSessionEnded() {
-            renderer.xr.enabled = false;
-            document.body.removeChild(renderer.domElement);
-            init();  // Reinitialize for next AR session
-        }
-
-        document.getElementById('start-ar').addEventListener('click', startAR);
-        init();
+        document.getElementById('start-ar').addEventListener('click', function () {
+            const scene = document.querySelector('a-scene');
+        scene.enterAR();
+    });
     </script>
+
 
