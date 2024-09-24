@@ -35,11 +35,11 @@
                             const arScene = document.createElement('div');
                             arScene.style.display = 'none'; // Hide the AR scene initially
                             const position3D = get3DPosition(userLatitude, userLongitude, targetLatitude, targetLongitude);
-
+                            console.log(hologramText);
                             arScene.innerHTML = `
-                                        <a-scene embedded arjs="sourceType: webcam; sourceWidth: 640; sourceHeight: 480;">
+                                                <a-scene embedded arjs="sourceType: webcam; sourceWidth: 640; sourceHeight: 480;" style="background-color: black;">
                                             <a-marker preset='hiro'>
-                                                <a-text value="${hologramText}" position="${position3D.x} ${position3D.y} ${position3D.z}" scale='40 40 40' color='white'></a-text>
+                                                <a-text value="${hologramText}" position="${position3D.x} ${position3D.y} ${position3D.z}" scale='40 40 40' color='red'></a-text>
                                             </a-marker>
                                             <a-entity camera></a-entity>
                                         </a-scene>
@@ -109,7 +109,7 @@
             // Adjust y as needed, setting it higher for better visibility
             return {
                 x: x,
-                y: 20, // Adjust height as needed
+                y: 50, // Adjust height as needed
                 z: -z // Use negative z for depth in A-Frame
             };
         }
