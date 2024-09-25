@@ -1,45 +1,6 @@
-﻿    <!-- AR Scene -->
-    <a-scene embedded
-             arjs="sourceType: webcam; debugUIEnabled: false"
-             vr-mode-ui="enabled: false"
-             webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay"
-             renderer="antialias: true; alpha: true"
-             background="transparent: true">
-        <!-- 3D Text Entity -->
-        <a-entity id="3dtext" text="value: Hello AR World!; color: #FF5733; align: center; width: 6;" position="0 0 -2" visible="false"></a-entity>
-
-        <!-- Camera for AR -->
-        <a-entity camera look-controls></a-entity>
-    </a-scene>
-
-    <!-- Overlay for Interaction -->
-    <div id="overlay" style="position: fixed; bottom: 0; width: 100%; text-align: center;">
-        <p style="color: white; font-size: 1.2em;">Move your device to place the 3D text.</p>
-    </div>
-
-    <script>
-        const sceneEl = document.querySelector("a-scene");
-
-        // Detect AR session start
-        sceneEl.addEventListener("enter-vr", function () {
-            if (this.is("ar-mode")) {
-                document.querySelector("#overlay p").textContent = "Move your device to scan the surface.";
-            }
-        });
-
-        // Hit test events
-        sceneEl.addEventListener("ar-hit-test-start", () => {
-            document.querySelector("#overlay p").textContent = "Scanning environment, finding surface.";
-        });
-
-        sceneEl.addEventListener("ar-hit-test-achieved", () => {
-            document.querySelector("#overlay p").textContent = "Surface found, tap to place the object.";
-        });
-
-        sceneEl.addEventListener("ar-hit-test-select", () => {
-            document.querySelector("#3dtext").setAttribute("visible", true);
-            document.querySelector("#overlay p").textContent = "Object placed!";
-        });
-    </script>
-
-
+﻿<a-scene ar >
+    <a-box width="0.25" height="0.25" depth="0.25" position="-0.25 0.125 -0.75" rotation="0 45 0" color="#4CC3D9" shadow></a-box>
+    <a-sphere position="0 0.3125 -1.25" radius="0.3125" color="#EF2D5E" shadow></a-sphere>
+    <a-cylinder position="0.25 0.1875 -0.75" radius="0.125" height="0.375" color="#FFC65D" shadow></a-cylinder>
+    <a-plane position="0 0 -1" rotation="-90 0 0" width="1" height="1" color="#7BC8A4" shadow></a-plane>
+</a-scene>
