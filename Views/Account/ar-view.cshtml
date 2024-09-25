@@ -1,15 +1,45 @@
-﻿
-    <button id="start-ar">Start AR Experience</button>
+﻿    <!-- AR Scene -->
+    <a-scene embedded
+             arjs="sourceType: webcam; debugUIEnabled: false"
+             vr-mode-ui="enabled: false"
+             webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay"
+             renderer="antialias: true; alpha: true"
+             background="transparent: true">
+        <!-- 3D Text Entity -->
+        <a-entity id="3dtext" text="value: Hello AR World!; color: #FF5733; align: center; width: 6;" position="0 0 -2" visible="false"></a-entity>
 
-    <a-scene embedded arjs>
-        <a-entity text="value: Hello; color: green;" position="0 0 -2"></a-entity>
+        <!-- Camera for AR -->
+        <a-entity camera look-controls></a-entity>
     </a-scene>
 
+    <!-- Overlay for Interaction -->
+    <div id="overlay" style="position: fixed; bottom: 0; width: 100%; text-align: center;">
+        <p style="color: white; font-size: 1.2em;">Move your device to place the 3D text.</p>
+    </div>
+
     <script>
-        document.getElementById('start-ar').addEventListener('click', function () {
-            const scene = document.querySelector('a-scene');
-        scene.enterAR();
-    });
+        const sceneEl = document.querySelector("a-scene");
+
+        // Detect AR session start
+        sceneEl.addEventListener("enter-vr", function () {
+            if (this.is("ar-mode")) {
+                document.querySelector("#overlay p").textContent = "Move your device to scan the surface.";
+            }
+        });
+
+        // Hit test events
+        sceneEl.addEventListener("ar-hit-test-start", () => {
+            document.querySelector("#overlay p").textContent = "Scanning environment, finding surface.";
+        });
+
+        sceneEl.addEventListener("ar-hit-test-achieved", () => {
+            document.querySelector("#overlay p").textContent = "Surface found, tap to place the object.";
+        });
+
+        sceneEl.addEventListener("ar-hit-test-select", () => {
+            document.querySelector("#3dtext").setAttribute("visible", true);
+            document.querySelector("#overlay p").textContent = "Object placed!";
+        });
     </script>
 
 
