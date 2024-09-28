@@ -45,12 +45,14 @@
                            required />
                     <div class="text-red-500 mt-1" id="ConfirmPasswordError"></div>
                 </div>
-                <button type="submit"
-                        class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-600">
-                    Register
+
+                <!-- Button with loading icon -->
+                <button type="submit" id="registerButton" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-600 flex items-center justify-center">
+                    <span id="buttonText">Register</span>
+                    <img id="loadingIcon" src="~/images/static/work-in-progress.png" alt="Loading..." class="w-5 h-5 ml-2 hidden animate-spin">
                 </button>
             </form>
-           
+
         </div>
     </div>
 
@@ -62,16 +64,25 @@
             const formData = new FormData(form);
             const password = formData.get('Password');
             const confirmPassword = formData.get('ConfirmPassword');
+            const submitButton = document.getElementById('registerButton');
+            const buttonText = document.getElementById('buttonText');
+            const loadingIcon = document.getElementById('loadingIcon');
 
             // Clear previous error messages
             document.getElementById('UsernameError').innerText = '';
             document.getElementById('PasswordError').innerText = '';
             document.getElementById('ConfirmPasswordError').innerText = '';
 
+            // Check if passwords match
             if (password !== confirmPassword) {
                 document.getElementById('ConfirmPasswordError').innerText = 'Passwords do not match';
                 return;
             }
+
+            // Disable the button and show the loading icon
+            submitButton.disabled = true;
+            buttonText.classList.add('hidden');
+            loadingIcon.classList.remove('hidden');
 
             try {
                 const response = await fetch(form.action, {
@@ -84,14 +95,22 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert(result.message);
+                  
                     window.location.href = '@Url.Action("Login", "Account")'; // Redirect to login page
                 } else {
                     alert(result.message); // Show error message if registration fails
+                    // Re-enable the button if registration fails
+                    submitButton.disabled = false;
+                    buttonText.classList.remove('hidden');
+                    loadingIcon.classList.add('hidden');
                 }
             } catch (error) {
                 console.error('An error occurred:', error);
                 alert('An unexpected error occurred.');
+                // Re-enable the button on error
+                submitButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingIcon.classList.add('hidden');
             }
         };
     </script>

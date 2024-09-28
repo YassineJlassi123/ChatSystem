@@ -55,32 +55,68 @@ namespace jwtlogin.Controllers
         }
 
         // Handle registration form submission
-        [HttpPost]
-        public async Task<IActionResult> Register(RegistrationDto model)
+       [HttpPost]
+public async Task<IActionResult> Register(RegistrationDto model)
+{
+    // Trim whitespace from input to prevent accidental spaces
+    model.Username = model.Username?.Trim();
+    model.Password = model.Password?.Trim();
+
+    // Validate the model state and ensure it's valid
+    if (!ModelState.IsValid)
+    {
+        return Json(new { success = false, message = "Invalid input" });
+    }
+
+    try
+    {
+        // Ensure case-insensitivity by making the username lowercase
+        var normalizedUsername = model.Username.ToLowerInvariant();
+
+        // Efficiently check if a user with the same username already exists
+        if (await _context.Users.AnyAsync(u => u.Username == normalizedUsername))
         {
-            if (!ModelState.IsValid)
-            {
-                return Json(new { success = false, message = "Invalid input" });
-            }
-
-            if (await _context.Users.AnyAsync(u => u.Username == model.Username.ToLower()))
-            {
-                return Json(new { success = false, message = "Username already exists" });
-            }
-
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
-            var user = new User
-            {
-                Username = model.Username,
-                PasswordHash = passwordHash,
-                Role = "User"
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Json(new { success = true, message = "Registration successful!" });
+            return Json(new { success = false, message = "Username already exists" });
         }
+
+        // Hash the password with a strong algorithm (Bcrypt)
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
+
+        // Create a new User entity
+        var user = new User
+        {
+            Username = normalizedUsername,
+            PasswordHash = passwordHash,
+            Role = "User",  // Set default role, consider using an enum for roles in the future
+          
+        };
+
+        // Add the new user to the context and save changes asynchronously
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true, message = "Registration successful!" });
+    }
+    catch (DbUpdateException dbEx) // Catch database update exceptions like unique constraint violations
+    {
+        // Handle the unique constraint exception for the username
+        if (dbEx.InnerException?.Message.Contains("UNIQUE constraint failed") == true)
+        {
+            return Json(new { success = false, message = "Username already exists" });
+        }
+
+        // Log or rethrow unexpected exceptions for further inspection
+        throw;
+    }
+    catch (Exception ex)
+    {
+        // Log unexpected errors, possibly using a logging framework like Serilog, NLog, etc.
+        // LogError(ex); 
+
+        return Json(new { success = false, message = "An unexpected error occurred. Please try again later." });
+    }
+}
+
 
         // Display login form
         [HttpGet]
@@ -99,34 +135,59 @@ namespace jwtlogin.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return Json(new { success = false, message = "Invalid input" });
+                return Json(new { success = false, message = "Invalid input." });
             }
 
-            var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == model.Username);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+            try
             {
-                return Json(new { success = false, message = "Invalid username or password" });
-            }
-            user.IsOnline = true;
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
+                // Fetch the user by username asynchronously
+                var user = await _context.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Username == model.Username);
 
-            var token = _tokenService.GenerateToken(user.Username, user.Role);
-            Response.Cookies.Append("jwtToken", token, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true if using HTTPS
-                SameSite = SameSiteMode.Strict
-            });
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(new ClaimsIdentity(new[]
+                // Generalized error message for security to avoid username enumeration
+                if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
                 {
-                    new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Role, user.Role)
-                }, CookieAuthenticationDefaults.AuthenticationScheme)));
+                    return Json(new { success = false, message = "Invalid username or password." });
+                }
 
-            return Json(new { success = true, message = "Login successful!" });
+                // Set user online status and save it asynchronously
+                user.IsOnline = true;
+                _context.Entry(user).Property(u => u.IsOnline).IsModified = true;
+                await _context.SaveChangesAsync();
+
+                // Generate JWT token
+                var token = _tokenService.GenerateToken(user.Username, user.Role);
+
+                // Set the JWT token as an HTTP-only, secure cookie
+                Response.Cookies.Append("jwtToken", token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true, // Ensure HTTPS is used
+                    SameSite = SameSiteMode.Lax // Adjust to Lax for compatibility
+                });
+
+                // Sign in the user with Cookie Authentication (if needed for session-based auth)
+                var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Role, user.Role)
+        };
+
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+                // Return success message
+                return Json(new { success = true, message = "Login successful!" });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging (use a logging framework like Serilog or NLog)
+                // Log.Error(ex, "Login attempt failed");
+                return Json(new { success = false, message = "An error occurred during login." });
+            }
         }
+
 
         // Handle logout
         [HttpPost]
@@ -811,7 +872,7 @@ namespace jwtlogin.Controllers
                     {
                         File = new FileDescription(profileImage.FileName, profileImage.OpenReadStream()),
                         Folder = "profiles",
-                        Transformation = new Transformation().Crop("fill").Gravity("face").Width(500).Height(500)
+                        Transformation = new Transformation().Crop("fill").Gravity("face").Width(500).Height(700)
                     };
 
                     var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -883,9 +944,6 @@ namespace jwtlogin.Controllers
                     JaimeCount = p.JaimeCount,
                     JadoreCount = p.JadoreCount,
                     CommentCount = p.CommentCount,
-                    HologramText=p.HologramText,
-                    Latitude=p.Latitude,
-                    Longitude=p.Longitude,
                     Comments = p.Comments.Select(c => new CommentDto
                     {
                         Id = c.Id,
@@ -955,9 +1013,6 @@ namespace jwtlogin.Controllers
                     JaimeCount = p.JaimeCount,
                     JadoreCount = p.JadoreCount,
                     CommentCount = p.CommentCount,
-                    HologramText = p.HologramText,
-                    Latitude = p.Latitude,
-                    Longitude = p.Longitude,
                     Comments = p.Comments.Select(c => new CommentDto
                     {
                         Id = c.Id,
@@ -997,7 +1052,7 @@ namespace jwtlogin.Controllers
                 {
                     File = new FileDescription(coverImage.FileName, coverImage.OpenReadStream()),
                     Folder = "covers",
-                    Transformation = new Transformation().Crop("fill").Gravity("face").Width(1500).Height(500)
+                    Transformation = new Transformation().Crop("fill").Gravity("face").Width(1500).Height(1000)
                 };
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -1036,20 +1091,9 @@ namespace jwtlogin.Controllers
             }
 
             // For nested models, like Post, do the same
-            double? latitude = null;
-            double? longitude = null;
+           
 
-            if (!string.IsNullOrEmpty(model.Post.Latitude) &&
-                double.TryParse(model.Post.Latitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedLatitude))
-            {
-                latitude = parsedLatitude;
-            }
-
-            if (!string.IsNullOrEmpty(model.Post.Longitude) &&
-                double.TryParse(model.Post.Longitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedLongitude))
-            {
-                longitude = parsedLongitude;
-            }
+           
 
             var postType = model.Post.Type;
 
@@ -1078,21 +1122,7 @@ namespace jwtlogin.Controllers
                     });
                 }
             }
-           
-
-            // Only try to parse latitude and longitude if the post type is "hologram"
-           else if (model.Post.Type == "hologram")
-            {
-                if (string.IsNullOrEmpty(model.Post.Latitude) ||
-                    string.IsNullOrEmpty(model.Post.Longitude)) { 
-                    // Return error message if not provided for hologram type
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Please provide valid latitude and longitude for hologram posts."
-                    });
-                }
-            }
+                     
 
             // Handle image upload if provided for text_image
             string imageUrl = null;
@@ -1139,7 +1169,7 @@ namespace jwtlogin.Controllers
                         {
                             File = new FileDescription("generated-image.jpg", new MemoryStream(imageBytes)),
                             Folder = "posts",
-                            Transformation = new Transformation().Crop("fill").Gravity("face").Width(800).Height(600)
+                            Transformation = new Transformation().Crop("fill").Gravity("face").Width(800).Height(800)
                         };
 
                         var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -1175,11 +1205,7 @@ namespace jwtlogin.Controllers
                 Content = model.Post.Content, // Can be null or empty
                 ImageUrl = imageUrl, // Can be null if no image is provided
                 UserId = currentUser.Id,
-                CreatedAt = DateTime.UtcNow,
-                HologramText=model.Post.HologramText,
-                Latitude= latitude,
-                Longitude= longitude,
-
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.Posts.Add(post);
@@ -1799,9 +1825,6 @@ User Input: '{request.Text}'";
             public int JadoreCount { get; set; } // Count of Jadore interactions
             public int CommentCount { get; set; } // Count of comments
             public List<CommentDto> Comments { get; set; }
-            public string? HologramText { get; set; } // New property for hologram text
-            public double? Latitude { get; set; } // Nullable for cases where it's not a hologram
-            public double? Longitude { get; set; } // Nullable for cases where it's not a hologram
         }
 
 
@@ -1815,9 +1838,7 @@ User Input: '{request.Text}'";
             public IFormFile Image { get; set; } // For the image upload
             public string ImagePrompt { get; set; } // For image generation prompt
 
-            public string HologramText { get; set; } // New property for hologram text
-            public string Latitude { get; set; } // Nullable for cases where it's not a hologram
-            public string Longitude { get; set; } // Nullable for cases where it's not a hologram
+           
             public string Type { get; set; } // Type of post (e.g., "text_image", "hologram", etc.)
 
 

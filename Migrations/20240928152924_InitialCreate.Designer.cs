@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace jwtlogin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240918142257_InitialCreate")]
+    [Migration("20240928152924_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

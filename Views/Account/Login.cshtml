@@ -14,15 +14,17 @@
                 <label for="Password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
                 <input type="password" id="Password" name="Password" required placeholder="Enter your password" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" />
             </div>
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-600">Login</button>
+            <button id="loginButton" type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-600 flex items-center justify-center">
+                <img id="buttonIcon" src="~/images/static/work-in-progress.png" alt="Loading" class="hidden h-5 w-5 mr-2" />
+                <span id="buttonText">Login</span>
+            </button>
         </form>
         <div class="mt-4">
             <a href="@Url.Action("GoogleLogin", "Account")" class="w-full inline-flex items-center justify-center bg-gray-600 text-white py-2 rounded-lg border border-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-700 dark:hover:bg-gray-800 dark:focus:ring-gray-600">
-               
                 Connect with Google
             </a>
         </div>
-        you dont have account ? <a href="@Url.Action("Register", "Account")"> Create account </a>
+        <p>You don't have an account? <a href="@Url.Action("Register", "Account")">Create account</a></p>
     </div>
 </div>
 
@@ -33,6 +35,14 @@
 
             const form = event.target;
             const formData = new FormData(form);
+            const loginButton = document.getElementById('loginButton');
+            const buttonIcon = document.getElementById('buttonIcon');
+            const buttonText = document.getElementById('buttonText');
+
+            // Disable the button and show loading icon
+            loginButton.disabled = true;
+            buttonIcon.classList.remove('hidden'); // Show loading icon
+            buttonText.classList.add('hidden'); // Hide button text
 
             try {
                 const response = await fetch(form.action, {
@@ -52,6 +62,11 @@
             } catch (error) {
                 console.error('An error occurred:', error);
                 alert('An unexpected error occurred.');
+            } finally {
+                // Re-enable the button and hide loading icon
+                loginButton.disabled = false;
+                buttonIcon.classList.add('hidden'); // Hide loading icon
+                buttonText.classList.remove('hidden'); // Show button text again
             }
         };
     </script>

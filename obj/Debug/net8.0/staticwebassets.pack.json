@@ -41,6 +41,10 @@
       "PackagePath": "staticwebassets\\images\\static\\letter-y.png"
     },
     {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\loading.png",
+      "PackagePath": "staticwebassets\\images\\static\\loading.png"
+    },
+    {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\message.png",
       "PackagePath": "staticwebassets\\images\\static\\message.png"
     },
@@ -63,6 +67,10 @@
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\search.png",
       "PackagePath": "staticwebassets\\images\\static\\search.png"
+    },
+    {
+      "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\images\\static\\work-in-progress.png",
+      "PackagePath": "staticwebassets\\images\\static\\work-in-progress.png"
     },
     {
       "Id": "C:\\Users\\Yassine\\source\\repos\\jwtlogin\\wwwroot\\js\\site.js",

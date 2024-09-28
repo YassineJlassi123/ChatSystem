@@ -1,25 +1,54 @@
 ﻿@model jwtlogin.Controllers.AccountController.AccueilViewModel
 
-<div class="max-w-lg mx-auto bg-card rounded-lg shadow-md p-4 mt-6">
+ <div id="post-creation-section" class="bg-card p-4 rounded-lg shadow-md mb-4 max-w-lg mx-auto">
     <h2 class="text-lg font-bold mb-2">Créer une publication</h2>
     <form id="createPostForm" method="post" enctype="multipart/form-data">
         <div class="flex items-center mb-4">
-            <img src="@Model.User.ProfileImageUrl" alt="User Avatar" class="w-12 h-12 rounded-full" />
+            <img class="w-12 h-12 rounded-full" src="@Model.User.ProfileImageUrl" alt="User Avatar" />
             <div class="ml-3">
                 <span class="text-lg font-semibold">@Model.User.Username</span>
             </div>
         </div>
-        <textarea name="Post.Content" class="w-full p-2 border border-border rounded-md focus:outline-none focus:ring focus:ring-ring"
-                  rows="3" placeholder="Que voulez-vous dire ?" required></textarea>
-        <span id="content-validation" class="text-red-500"></span>
-        <div class="flex items-center justify-between mt-4">
+
+        <!-- Post Type Selector -->
+        <div class="mb-4">
+            <label for="postType">Type de publication:</label>
+            <select id="postType" name="Post.Type" class="w-full p-2 border border-border rounded-md">
+                <option class="w-full" value="text_image">Texte/Image</option>
+                <option class="w-full" value="ai_image">Générer Image par IA</option>
+
+            </select>
+        </div>
+
+        <!-- Text Content -->
+        <div id="textContentSection">
+            <textarea name="Post.Content" id="postContent" class="w-full p-2 border border-border rounded-md focus:outline-none focus:ring focus:ring-ring"
+                      rows="3" placeholder="Que voulez-vous dire ?" required></textarea>
+            <span id="content-validation" class="text-red-500"></span>
+        </div>
+
+        <!-- Image Upload for Text/Image Post -->
+        <div id="imageUploadSection" class="flex items-center justify-between mt-4">
             <label for="image-upload" class="flex items-center space-x-2 cursor-pointer">
                 <input type="file" id="image-upload" name="Post.Image" class="hidden" accept="image/*" onchange="previewImage()" />
-                <img  id="preview-image" src="/images/static/gallery.png" alt="Uploaded Image" class="cursor-pointer rounded-md h-32 w-full h-32 object-cover" />
+                <img id="preview-image" src="~/images/static/gallery.png" alt="Uploaded Image" class="cursor-pointer rounded-md h-32 w-full object-cover" />
             </label>
             <span id="image-validation" class="text-red-500"></span>
         </div>
-        <button type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md">Publier</button>
+
+        <!-- AI Image Prompt for AI Post -->
+        <div id="aiImagePromptSection" class="hidden">
+            <label for="ImagePrompt">Décrire l'image à générer (Prompt IA):</label>
+            <input type="text" id="ImagePrompt" name="Post.ImagePrompt" placeholder="Décrire l'image à générer"
+                   class="w-full p-2 border border-border rounded-md">
+        </div>
+
+
+
+        <button style="background-color: lightgray;" type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md flex items-center justify-center">
+            <img id="loadingIcon" src="~/images/static/work-in-progress.png" alt="Loading" class="hidden w-5 h-5 mr-2" /> <!-- Rotating icon -->
+            Publier
+        </button>
     </form>
 </div>
 
@@ -441,70 +470,10 @@
         });
     });
 
-    document.getElementById('submitPost').addEventListener('click', async () => {
-        const form = document.getElementById('createPostForm');
-        const formData = new FormData(form);
+  
 
-        // Get the image file input and file
-        const imageFileInput = document.getElementById('image-upload');
-        const imageFile = imageFileInput.files[0];
-        const imageValidation = document.getElementById('image-validation');
 
-        // Clear previous validation messages
-        document.getElementById('content-validation').innerText = '';
-        imageValidation.innerText = '';
-
-        const content = formData.get('Post.Content').trim();
-
-        // Validate content and image
-        if (!content && !imageFile) {
-            document.getElementById('content-validation').innerText = 'Please provide either content or an image.';
-            return;
-        }
-
-        // Optionally validate image type if an image is provided
-        if (imageFile && imageFile.type && !imageFile.type.startsWith('image/')) {
-            imageValidation.innerText = 'Only image files are allowed.';
-            return;
-        }
-
-        try {
-            const response = await fetch('/account/CreatePost', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                form.reset(); // Clear form
-                document.getElementById('preview-image').src = '/images/static/gallery.png'; // Clear preview image
-                appendnewPosts(result.post); // Add the new post to the top of the list
-            } else {
-                console.error('Error creating post:', result.message); // Display backend error message
-                document.getElementById('content-validation').innerText = result.message;
-            }
-        } catch (error) {
-            console.error('Error creating post:', error);
-            document.getElementById('content-validation').innerText = 'An error occurred while creating the post. Please try again.';
-        }
-    });
-
-    // Preview selected image
-    function previewImage() {
-        const input = document.getElementById('image-upload');
-        const preview = document.getElementById('preview-image');
-
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                preview.src = e.target.result;
-            };
-            reader.readAsDataURL(input.files[0]);
-        } else {
-            preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
-        }
-    }
+             
     function appendnewPosts(post) {
         const timeAgoString = timeAgo(post.CreatedAt);
 
@@ -572,6 +541,87 @@
         }
     }
     document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('submitPost').addEventListener('click', async () => {
+            const submitButton = document.getElementById('submitPost');
+            const loadingIcon = document.getElementById('loadingIcon');
+            const form = document.getElementById('createPostForm');
+            const formData = new FormData(form);
+            const postType = formData.get('Post.Type');
+            const content = formData.get('Post.Content').trim();
+            const imagePrompt = formData.get('Post.ImagePrompt').trim();
+
+            document.getElementById('content-validation').innerText = '';
+
+
+
+            // Additional validation for post types
+            if (postType === 'text_image') {
+                const imageFile = document.getElementById('image-upload').files[0];
+                if (!imageFile && !content) {
+                    document.getElementById('content-validation').innerText = 'Veuillez fournir une image ou du contenu.';
+                    return;
+                }
+            } else if (postType === 'ai_image') {
+                if (!imagePrompt) {
+                    document.getElementById('content-validation').innerText = 'Veuillez fournir une description pour générer l\'image.';
+                    return;
+                }
+            }
+
+            // Disable the submit button and show the loading icon
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-50'); // Optional: visually indicate button is disabled
+            loadingIcon.classList.remove('hidden');   // Show loading icon
+            loadingIcon.classList.add('rotate');      // Start rotating the icon
+
+            try {
+                const response = await fetch('/account/CreatePost', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    form.reset(); // Clear form
+                    removeImagePreview(); // Remove the image preview
+                    appendnewPosts(result.post); // Add new post to the feed
+                } else {
+                    document.getElementById('content-validation').innerText = result.message;
+                }
+            } catch (error) {
+                console.error('Error creating post:', error);
+                document.getElementById('content-validation').innerText = 'Une erreur est survenue lors de la création du post.';
+            } finally {
+                // Re-enable the submit button and hide the loading icon
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-50'); // Remove disabled styling
+                loadingIcon.classList.add('hidden');         // Hide the loading icon
+                loadingIcon.classList.remove('rotate');      // Stop rotating
+            }
+        });
+
+
+        // Preview selected image
+        function previewImage() {
+            const input = document.getElementById('image-upload');
+            const preview = document.getElementById('preview-image');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
+            }
+        }
+
+        // Function to remove the image preview after submission
+        function removeImagePreview() {
+            const preview = document.getElementById('preview-image');
+            preview.src = '/images/static/gallery.png'; // Reset to default image after submission
+        }
         function timeAgo(date) {
             const now = new Date();
             const seconds = Math.floor((now - new Date(date)) / 1000);
@@ -607,4 +657,13 @@
         const profileUrl = '@Url.Action("Profile", "Account")';  // Razor generates the URL for the profile action
         window.location.href = `${profileUrl}?username=${encodeURIComponent(username)}`;
     }
+    document.getElementById('postType').addEventListener('change', function () {
+        const postType = this.value;
+
+        document.getElementById('textContentSection').classList.toggle('hidden', postType !== 'text_image');
+        document.getElementById('imageUploadSection').classList.toggle('hidden', postType !== 'text_image');
+        document.getElementById('aiImagePromptSection').classList.toggle('hidden', postType !== 'ai_image');
+
+
+    });
 </script>

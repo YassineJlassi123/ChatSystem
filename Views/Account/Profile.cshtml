@@ -78,9 +78,9 @@
             <div class="mb-4">
                 <label for="postType">Type de publication:</label>
                 <select id="postType" name="Post.Type" class="w-full p-2 border border-border rounded-md">
-                    <option value="text_image">Texte/Image</option>
-                    <option value="ai_image">Générer Image par IA</option>
-                    <option value="hologram">Post Hologram</option>
+                    <option class="w-full" value="text_image">Texte/Image</option>
+                    <option class="w-full" value="ai_image">Générer Image par IA</option>
+                 
                 </select>
             </div>
 
@@ -107,23 +107,12 @@
                        class="w-full p-2 border border-border rounded-md">
             </div>
 
-            <!-- Hologram Post Section (3D Text and Map Location) -->
-            <div id="hologramSection" class="hidden">
-                <div class="mb-4">
-                    <label for="hologramText">Texte Hologramme (3D):</label>
-                    <input type="text" id="hologramText" name="Post.HologramText" placeholder="Texte Hologramme"
-                           class="w-full p-2 border border-border rounded-md">
-                </div>
-                <div class="w-full h-64 md:h-96">
-                    <div id="map" class="w-full h-full"></div> <!-- Full width and height of the container -->
-                </div>
-                <input type="hidden" id="Latitude" name="Post.Latitude">
-                <input type="hidden" id="Longitude" name="Post.Longitude">
-                <div id="threejs-container" class="w-full h-64 md:h-96 mt-4 bg-gray-100 rounded-lg"></div>
 
-            </div>
 
-            <button type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md">Publier</button>
+            <button style="background-color: lightgray;" type="button" id="submitPost" class="bg-primary text-primary-foreground hover:bg-primary/80 w-full mt-4 p-2 rounded-md flex items-center justify-center">
+                <img id="loadingIcon" src="~/images/static/work-in-progress.png" alt="Loading" class="hidden w-5 h-5 mr-2" /> <!-- Rotating icon -->
+                Publier
+            </button>
         </form>
     </div>
 
@@ -163,18 +152,7 @@
                     <img style="width:100%" class="rounded-lg mb-4" src="@post.ImageUrl" alt="Post Image" />
                 }
 
-                <!-- Hologram Button -->
-                @if (!string.IsNullOrEmpty(post.HologramText))
-                {
-                    <div class="mt-4">
-                        <button class="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                                onclick="openARView(@post.Latitude?.ToString("F10", System.Globalization.CultureInfo.InvariantCulture), @post.Longitude?.ToString("F10", System.Globalization.CultureInfo.InvariantCulture), '@post.HologramText')">
-                            View Hologram
-                        </button>
-
-                        
-                    </div>
-                }
+               
 
                 <div class="flex justify-between">
                     <div class="flex items-center">
@@ -225,25 +203,7 @@
 
 @section Scripts {
     <script>
-        function closeARView() {
-            document.getElementById('ar-scene').style.display = 'none';
-        }
-        var map = L.map('map').setView([33.0, 10.0], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 30,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
-
-        var marker;
-        map.on('click', function (e) {
-            if (marker) {
-                map.removeLayer(marker);
-            }
-            marker = L.marker(e.latlng).addTo(map);
-            document.getElementById("Latitude").value = e.latlng.lat;
-            document.getElementById("Longitude").value = e.latlng.lng;
-            
-        });
+       
       
 
         // Handle post type change
@@ -253,7 +213,6 @@
             document.getElementById('textContentSection').classList.toggle('hidden', postType !== 'text_image');
             document.getElementById('imageUploadSection').classList.toggle('hidden', postType !== 'text_image');
             document.getElementById('aiImagePromptSection').classList.toggle('hidden', postType !== 'ai_image');
-            document.getElementById('hologramSection').classList.toggle('hidden', postType !== 'hologram');
 
             
         });
@@ -264,16 +223,7 @@
 
 
 
-        function openARView(latitude, longitude, hologramText) {
-            const arViewUrl = '@Url.Action("ARView", "Account")'; // Generate the URL for the AR view action
-            const encodedHologramText = encodeURIComponent(hologramText); // Encode the hologram text for the URL
-
-            // Construct the complete URL with parameters
-            const url = `${arViewUrl}?latitude=${latitude}&longitude=${longitude}&hologramText=${encodedHologramText}`;
-
-            window.location.href = url; // Navigate to the AR view page with parameters
-        }
-
+       
 
         
 
@@ -633,53 +583,39 @@
             document.getElementById('coverImageInput').addEventListener('change', (event) => {
                 document.getElementById('coverImageForm').submit();
             });
-
             document.getElementById('submitPost').addEventListener('click', async () => {
+                const submitButton = document.getElementById('submitPost');
+                const loadingIcon = document.getElementById('loadingIcon');
                 const form = document.getElementById('createPostForm');
                 const formData = new FormData(form);
                 const postType = formData.get('Post.Type');
                 const content = formData.get('Post.Content').trim();
                 const imagePrompt = formData.get('Post.ImagePrompt').trim();
-                const hologramText = formData.get('Post.HologramText').trim();
-                const latitude = formData.get('Post.Latitude'); // Convert to float
-                const longitude = formData.get('Post.Longitude'); // Convert to float
 
                 document.getElementById('content-validation').innerText = '';
 
-                // Check if there's content for the post
-                if (!content && !imagePrompt && !hologramText) {
-                    document.getElementById('content-validation').innerText = 'Veuillez fournir du contenu ou une image.';
-                    return;
-                }
-
+               
+              
                 // Additional validation for post types
                 if (postType === 'text_image') {
                     const imageFile = document.getElementById('image-upload').files[0];
-                    if (!imageFile || !content) {
+                    if (!imageFile && !content) {
                         document.getElementById('content-validation').innerText = 'Veuillez fournir une image ou du contenu.';
                         return;
                     }
                 } else if (postType === 'ai_image') {
-                    // Ensure that the image prompt is filled for AI-generated images
                     if (!imagePrompt) {
                         document.getElementById('content-validation').innerText = 'Veuillez fournir une description pour générer l\'image.';
                         return;
                     }
-                } else if (postType === 'hologram') {
-                    // Ensure hologram text is provided
-                    if (!hologramText) {
-                        document.getElementById('content-validation').innerText = 'Veuillez fournir du texte pour l\'hologramme.';
-                        return;
-                    }
-                    // Ensure location is selected for hologram posts
-                    if (isNaN(latitude) || isNaN(longitude)) {
-                        document.getElementById('content-validation').innerText = 'Veuillez sélectionner un emplacement sur la carte.';
-                        return;
-                    }
                 }
-                formData.forEach((value, key) => {
-                    console.log(key, value);
-                });
+
+                // Disable the submit button and show the loading icon
+                submitButton.disabled = true;
+                submitButton.classList.add('opacity-50'); // Optional: visually indicate button is disabled
+                loadingIcon.classList.remove('hidden');   // Show loading icon
+                loadingIcon.classList.add('rotate');      // Start rotating the icon
+
                 try {
                     const response = await fetch('/account/CreatePost', {
                         method: 'POST',
@@ -689,6 +625,7 @@
                     const result = await response.json();
                     if (result.success) {
                         form.reset(); // Clear form
+                        removeImagePreview(); // Remove the image preview
                         appendnewPosts(result.post); // Add new post to the feed
                     } else {
                         document.getElementById('content-validation').innerText = result.message;
@@ -696,8 +633,15 @@
                 } catch (error) {
                     console.error('Error creating post:', error);
                     document.getElementById('content-validation').innerText = 'Une erreur est survenue lors de la création du post.';
+                } finally {
+                    // Re-enable the submit button and hide the loading icon
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('opacity-50'); // Remove disabled styling
+                    loadingIcon.classList.add('hidden');         // Hide the loading icon
+                    loadingIcon.classList.remove('rotate');      // Stop rotating
                 }
             });
+
 
             // Preview selected image
             function previewImage() {
@@ -713,6 +657,12 @@
                 } else {
                     preview.src = '/images/static/gallery.png'; // Reset to default image if no file selected
                 }
+            }
+
+            // Function to remove the image preview after submission
+            function removeImagePreview() {
+                const preview = document.getElementById('preview-image');
+                preview.src = '/images/static/gallery.png'; // Reset to default image after submission
             }
 
 
